@@ -24,6 +24,9 @@ Record only actual active work time.
 | DEVOPS-436 | planning | 2026-03-31 15:44 | 2026-03-31 15:45 | 1m | Reviewed issue details, adjusted estimate to 2h, and recorded approved implementation plan in Jira |
 | DEVOPS-436 | implementation | 2026-03-31 15:45 | 2026-03-31 15:48 | 3m | Added FastAPI lifespan startup/shutdown, APScheduler cron job wiring, nightly sync pipeline ordering, and partial-failure policy hooks |
 | DEVOPS-436 | validation | 2026-03-31 15:48 | 2026-03-31 15:48 | 1m | Ran backend unit tests for scheduler/sync pipeline and existing collector test suites (21 passed) |
+| DEVOPS-436 | jira-update | 2026-03-31 16:03 | 2026-03-31 16:04 | 1m | Committed and pushed DEVOPS-436 implementation to origin/main |
+| DEVOPS-436 | jira-update | 2026-03-31 16:04 | 2026-03-31 16:05 | 1m | Updated Jira solution field and added implementation considerations comment |
+| DEVOPS-436 | jira-update | 2026-03-31 16:05 | 2026-03-31 16:05 | 1m | Close transition requested explicit log-work; prepared transition-compliant closure update |
 
 ## Active session template
 

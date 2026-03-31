@@ -65,6 +65,13 @@ For each Jira issue, process one by one:
 - Add tracked time details to the Jira issue (worklog/comment as configured).
 - Worklog entries must always represent actual elapsed active work, never estimates.
 - Never log forecast/expected hours as worklog time.
+- Never use approximated/manual guessed worklog values.
+- If exact active time is unknown or unclear, ask the user before adding or updating any Jira worklog.
+- Persist timing in-repo to avoid data loss: maintain `worklog-time-log.md` with per-issue sessions.
+- For every work session, record at minimum: issue key, activity type (`planning`/`implementation`/`validation`/`jira-update`), start timestamp, end timestamp, and calculated duration.
+- Add a session start entry when work begins and close it immediately when that session ends.
+- Use `worklog-time-log.md` as the source for Jira worklog totals (actual time only).
+- Hard gate: never add/update Jira worklog entries unless a matching finalized entry already exists in `worklog-time-log.md`.
 
 5) Status-driven progress
 - Use Jira issue status transitions to reflect real project progress.
