@@ -39,6 +39,10 @@ For each Jira issue, process one by one:
 - After approval, add the approved plan + estimate to Jira:
   - Preferred: issue comment.
   - If decomposition is needed: create sub-issue(s) and include the plan there.
+- ALWAYS set the Jira **Original Estimate** field when planning is finished.
+- Set the expected time to the same value as the approved estimate.
+- Do NOT pre-book that estimate as worked time in the worklog.
+- At planning stage, log only the actual time spent planning (for example, 1 minute if planning took 1 minute).
 
 2) Implement after plan approval
 - Start coding only after plan approval is confirmed.
@@ -46,18 +50,26 @@ For each Jira issue, process one by one:
 
 3) Post-implementation approval and solution capture
 - After implementation, request user approval before final Jira closure updates.
-- Once approved, update the issue "solution" field (or project-standard solution location) with what was implemented.
-- In this Jira project, the solution field is `customfield_10108` ("Solution"). Prefer filling this field directly before transitioning to Done.
+- Once approved, execute this post-process in order:
+  1. create and push the git commit for the implemented scope,
+  2. update the Jira issue "solution" field with what was implemented,
+  3. add any missing active-work time to Jira worklog.
+- In this Jira project, the solution field is `customfield_10108` ("Solution").
+- After the post-process, transition directly to Done (no intermediate code-review status transition).
+- The user will set/adjust the final resolution manually when needed.
 - Add implementation considerations, constraints, trade-offs, and follow-up notes in issue comments.
 
 4) Time tracking requirements
 - Track actual development time per issue using Cursor WakaTime when possible.
 - Track only active work time (while the agent is actively doing implementation/debugging/validation).
 - Add tracked time details to the Jira issue (worklog/comment as configured).
+- Worklog entries must always represent actual elapsed active work, never estimates.
+- Never log forecast/expected hours as worklog time.
 
 5) Status-driven progress
 - Use Jira issue status transitions to reflect real project progress.
-- Keep statuses current across ready-to-start/ready-for-development, in-progress, Ready-for-code-review, done states according to the board workflow.
+- Keep statuses current across ready-to-start/ready-for-development, in-progress, and done.
+- Do not use "Ready for code review" status in this repository workflow.
 
 ## Child Backlog Context (DEVOPS-429)
 
@@ -100,6 +112,7 @@ Use these documents as canonical references before changing behavior:
 - Do not silently change formulas, filters, or branch scope without updating docs and tests.
 
 5) Branch and release conventions
+- The canonical repository branch is always `main`; do not create or use `master`.
 - Do not drop required target branches (`master`, maintenance branches like `9.x`, `10.x`, `11.x`) unless intentionally reconfigured.
 - Continue excluding pre-release markers from customer-release metrics according to configurable rules.
 - All commits must be pushed to GitLab repository `https://gitlab.plunet.com/operations/dora-metrics.git`.
