@@ -40,6 +40,8 @@ Record only actual active work time.
 | DEVOPS-438 | jira-update | 2026-03-31 16:50 | 2026-03-31 16:50 | 1m | Added approved plan comment and set Original Estimate/Remaining Estimate to 3h |
 | DEVOPS-438 | implementation | 2026-03-31 16:50 | 2026-03-31 16:53 | 3m | Added runtime config service with YAML+DB+env merge precedence, encrypted secret handling, and sync pipeline wiring |
 | DEVOPS-438 | validation | 2026-03-31 16:53 | 2026-03-31 16:54 | 1m | Ran backend unit tests including new config service coverage (30 passed) and targeted lint check |
+| DEVOPS-438 | jira-update | 2026-03-31 17:03 | 2026-03-31 17:03 | 1m | Created and pushed DEVOPS-438 commit, prepared Jira solution/worklog/done transition updates |
+| DEVOPS-438 | jira-update | 2026-03-31 17:04 | 2026-03-31 17:04 | 1m | Jira close transition required explicit transition-level log-work payload |
 
 ## Active session template
 
