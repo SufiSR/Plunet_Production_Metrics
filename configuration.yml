@@ -1,0 +1,34 @@
+# Non-secret bootstrap defaults for local development.
+# Secrets must be provided via environment variables or admin runtime configuration.
+
+environment: development
+backend:
+  host: 0.0.0.0
+  port: 8000
+  log_level: INFO
+  sync_cron_hour: 2
+  sync_cron_minute: 0
+  lookback_days: 730
+
+gitlab:
+  base_url: https://gitlab.plunet.com
+  project_paths:
+    - operations/dora-metrics
+  target_branches:
+    - master
+    - 9.x
+    - 10.x
+    - 11.x
+  non_customer_release_markers:
+    - rc
+    - beta
+
+jira:
+  base_url: https://plunet.atlassian.net
+  excluded_projects: []
+  ready_for_qa_status_names:
+    - Ready for QA
+  production_bug_indicator_cf_ids: []
+
+notifications:
+  webhook_url: null

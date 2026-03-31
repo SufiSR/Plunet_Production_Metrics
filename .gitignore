@@ -1,0 +1,41 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Build artifacts
+dist/
+build/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local tooling state
+.cursor/
+agent-transcripts/
+terminals/
+
+# Logs
+*.log

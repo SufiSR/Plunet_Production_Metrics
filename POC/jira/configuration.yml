@@ -1,0 +1,16 @@
+jira:
+  # How many years back to fetch production bugs.
+  # The collector will add "created >= <today - lookback_years>" to the JQL.
+  lookback_years: 2
+
+  # Custom field numeric IDs that indicate a production bug.
+  # - 10114: Exalate / ServiceDesk link (free-text containing CS-xxxxx URL)
+  # - 10123: Manual customer name fallback (when no ServiceDesk ticket exists)
+  production_bug_indicator_cf_ids:
+    - 10114
+    - 10123
+
+  # Exclude these Jira projects from the search.
+  excluded_projects:
+    - JIRATESTS
+    - DEVOPS

@@ -1,0 +1,831 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10010.requestTypePractice",
+  "id": "18259",
+  "self": "https://plunet.atlassian.net/rest/api/2/issue/18259",
+  "key": "TRA-1089",
+  "fields": {
+    "statuscategorychangedate": "2024-02-27T13:07:33.000+0100",
+    "parent": {
+      "id": "57062",
+      "key": "BM-31345",
+      "self": "https://plunet.atlassian.net/rest/api/2/issue/57062",
+      "fields": {
+        "summary": "Plunet10 - Bugs in releasetest",
+        "status": {
+          "self": "https://plunet.atlassian.net/rest/api/2/status/10024",
+          "description": "",
+          "iconUrl": "https://plunet.atlassian.net/",
+          "name": "Done",
+          "id": "10024",
+          "statusCategory": {
+            "self": "https://plunet.atlassian.net/rest/api/2/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        },
+        "priority": {
+          "self": "https://plunet.atlassian.net/rest/api/2/priority/10001",
+          "iconUrl": "https://plunet.atlassian.net/images/icons/priorities/critical.svg",
+          "name": "Critical",
+          "id": "10001"
+        },
+        "issuetype": {
+          "self": "https://plunet.atlassian.net/rest/api/2/issuetype/10000",
+          "id": "10000",
+          "description": "A big user story that needs to be broken down. Created by Jira Software - do not edit or delete.",
+          "iconUrl": "https://plunet.atlassian.net/images/icons/issuetypes/epic.svg",
+          "name": "Epic",
+          "subtask": false,
+          "hierarchyLevel": 1
+        }
+      }
+    },
+    "customfield_10110": null,
+    "fixVersions": [
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/version/10194",
+        "id": "10194",
+        "name": "10.0.0",
+        "archived": false,
+        "released": true
+      },
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/version/10195",
+        "id": "10195",
+        "name": "9.14.10",
+        "archived": false,
+        "released": true
+      }
+    ],
+    "statusCategory": {
+      "self": "https://plunet.atlassian.net/rest/api/2/statuscategory/3",
+      "id": 3,
+      "key": "done",
+      "colorName": "green",
+      "name": "Done"
+    },
+    "customfield_10111": {
+      "self": "https://plunet.atlassian.net/rest/api/2/customFieldOption/10098",
+      "value": "Keine Auswahl / No selection",
+      "id": "10098"
+    },
+    "resolution": {
+      "self": "https://plunet.atlassian.net/rest/api/2/resolution/10004",
+      "id": "10004",
+      "description": "A fix for this issue is checked into the tree and tested. This is typically used for issues of type \"Bug\" as existing features are adjusted.",
+      "name": "Fixed"
+    },
+    "customfield_10113": null,
+    "customfield_10114": null,
+    "customfield_10104": {
+      "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "accountId": "712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "emailAddress": "daniel.ganz@plunet.com",
+      "avatarUrls": {
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/32"
+      },
+      "displayName": "Daniel Ganz",
+      "active": true,
+      "timeZone": "Europe/Berlin",
+      "accountType": "atlassian"
+    },
+    "customfield_10108": "@QA:\r\n * Please test basic functionality of the window, saving, apply changes, etc.\r\n * +BM as well as GUI+ changes were necessary for this issue\r\n * Since this bug is GWT-related, there is a fix for version 9, too\r\n\r\n \r\n\r\nVersion 10:\r\n * BM: [https://gitlab.plunet.com/dev/plunet/-/merge_requests/4677]\r\n * GUI: [https://gitlab.plunet.com/gui/plunet/-/merge_requests/598]\r\n\r\nVersion 9:\r\n * BM: [https://gitlab.plunet.com/dev/plunet/-/merge_requests/4678]\r\n * GUI: [https://gitlab.plunet.com/gui/plunet/-/merge_requests/597]",
+    "customfield_10109": null,
+    "lastViewed": "2026-03-26T08:24:14.493+0100",
+    "customfield_10180": null,
+    "customfield_10181": null,
+    "customfield_10064": null,
+    "priority": {
+      "self": "https://plunet.atlassian.net/rest/api/2/priority/10002",
+      "iconUrl": "https://plunet.atlassian.net/images/icons/priorities/high.svg",
+      "name": "Major",
+      "id": "10002"
+    },
+    "labels": [
+      "Mainboard"
+    ],
+    "customfield_10732": null,
+    "timeestimate": null,
+    "aggregatetimeoriginalestimate": null,
+    "versions": [
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/version/10194",
+        "id": "10194",
+        "name": "10.0.0",
+        "archived": false,
+        "released": true
+      }
+    ],
+    "issuelinks": [],
+    "assignee": {
+      "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A90a376a0-549a-4e91-9e72-3be78f67ff3c",
+      "accountId": "712020:90a376a0-549a-4e91-9e72-3be78f67ff3c",
+      "emailAddress": "julia.arns@plunet.com",
+      "avatarUrls": {
+        "48x48": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+        "24x24": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+        "16x16": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+        "32x32": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png"
+      },
+      "displayName": "Julia Arns",
+      "active": true,
+      "timeZone": "Europe/Berlin",
+      "accountType": "atlassian"
+    },
+    "status": {
+      "self": "https://plunet.atlassian.net/rest/api/2/status/10024",
+      "description": "",
+      "iconUrl": "https://plunet.atlassian.net/",
+      "name": "Done",
+      "id": "10024",
+      "statusCategory": {
+        "self": "https://plunet.atlassian.net/rest/api/2/statuscategory/3",
+        "id": 3,
+        "key": "done",
+        "colorName": "green",
+        "name": "Done"
+      }
+    },
+    "components": [
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/component/10248",
+        "id": "10248",
+        "name": "Job - Dateizuweisung"
+      }
+    ],
+    "customfield_10175": null,
+    "customfield_10177": null,
+    "aggregatetimeestimate": null,
+    "creator": {
+      "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "accountId": "712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "emailAddress": "daniel.ganz@plunet.com",
+      "avatarUrls": {
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/32"
+      },
+      "displayName": "Daniel Ganz",
+      "active": true,
+      "timeZone": "Europe/Berlin",
+      "accountType": "atlassian"
+    },
+    "subtasks": [],
+    "customfield_10160": null,
+    "customfield_10161": null,
+    "customfield_10162": null,
+    "reporter": {
+      "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "accountId": "712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+      "emailAddress": "daniel.ganz@plunet.com",
+      "avatarUrls": {
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/32"
+      },
+      "displayName": "Daniel Ganz",
+      "active": true,
+      "timeZone": "Europe/Berlin",
+      "accountType": "atlassian"
+    },
+    "aggregateprogress": {
+      "progress": 18000,
+      "total": 18000,
+      "percent": 100
+    },
+    "customfield_10165": null,
+    "customfield_10167": null,
+    "customfield_10169": null,
+    "customfield_10159": null,
+    "customfield_10317": [],
+    "progress": {
+      "progress": 18000,
+      "total": 18000,
+      "percent": 100
+    },
+    "worklog": {
+      "startAt": 0,
+      "maxResults": 20,
+      "total": 3,
+      "worklogs": [
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/worklog/16408",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Add80cc18-6cfb-462c-8961-788147bf90fe",
+            "accountId": "712020:dd80cc18-6cfb-462c-8961-788147bf90fe",
+            "emailAddress": "bram.vandersteen@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "24x24": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "16x16": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "32x32": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png"
+            },
+            "displayName": "Bram van der Steen",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Add80cc18-6cfb-462c-8961-788147bf90fe",
+            "accountId": "712020:dd80cc18-6cfb-462c-8961-788147bf90fe",
+            "emailAddress": "bram.vandersteen@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "24x24": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "16x16": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png",
+              "32x32": "https://secure.gravatar.com/avatar/7fc9b066a1dd27443c953d5d1d993aae?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBS-5.png"
+            },
+            "displayName": "Bram van der Steen",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-13T13:34:54.000+0100",
+          "updated": "2024-02-13T13:34:54.000+0100",
+          "started": "2024-02-13T11:34:00.000+0100",
+          "timeSpent": "2h",
+          "timeSpentSeconds": 7200,
+          "id": "16408",
+          "issueId": "18259"
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/worklog/16106",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A90a376a0-549a-4e91-9e72-3be78f67ff3c",
+            "accountId": "712020:90a376a0-549a-4e91-9e72-3be78f67ff3c",
+            "emailAddress": "julia.arns@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "24x24": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "16x16": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "32x32": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png"
+            },
+            "displayName": "Julia Arns",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A90a376a0-549a-4e91-9e72-3be78f67ff3c",
+            "accountId": "712020:90a376a0-549a-4e91-9e72-3be78f67ff3c",
+            "emailAddress": "julia.arns@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "24x24": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "16x16": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png",
+              "32x32": "https://secure.gravatar.com/avatar/01171aeb82c36061aea0b576bb059b3a?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJA-6.png"
+            },
+            "displayName": "Julia Arns",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-14T14:08:37.000+0100",
+          "updated": "2024-02-14T14:08:37.000+0100",
+          "started": "2024-02-14T14:07:00.000+0100",
+          "timeSpent": "2h 30m",
+          "timeSpentSeconds": 9000,
+          "id": "16106",
+          "issueId": "18259"
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/worklog/16409",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-20T15:55:59.000+0100",
+          "updated": "2024-02-20T15:55:59.000+0100",
+          "started": "2024-02-20T15:25:00.000+0100",
+          "timeSpent": "30m",
+          "timeSpentSeconds": 1800,
+          "id": "16409",
+          "issueId": "18259"
+        }
+      ]
+    },
+    "issuetype": {
+      "self": "https://plunet.atlassian.net/rest/api/2/issuetype/10011",
+      "id": "10011",
+      "description": "A problem or error.",
+      "iconUrl": "https://plunet.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10303?size=medium",
+      "name": "Bug",
+      "subtask": false,
+      "avatarId": 10303,
+      "hierarchyLevel": 0
+    },
+    "timespent": 18000,
+    "customfield_10030": null,
+    "project": {
+      "self": "https://plunet.atlassian.net/rest/api/2/project/10010",
+      "id": "10010",
+      "key": "TRA",
+      "name": "CAT Trados Studio",
+      "projectTypeKey": "software",
+      "simplified": false,
+      "avatarUrls": {
+        "48x48": "https://plunet.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10411",
+        "24x24": "https://plunet.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10411?size=small",
+        "16x16": "https://plunet.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10411?size=xsmall",
+        "32x32": "https://plunet.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10411?size=medium"
+      },
+      "projectCategory": {
+        "self": "https://plunet.atlassian.net/rest/api/2/projectCategory/10002",
+        "id": "10002",
+        "description": "Alle Projekte, die Schnittstellen des BM zu anderen Drittanbieterprodukten betreffen.",
+        "name": "Plunet Business Manager - Interface"
+      }
+    },
+    "customfield_10031": null,
+    "customfield_10033": null,
+    "aggregatetimespent": 18000,
+    "customfield_10034": null,
+    "customfield_10035": null,
+    "customfield_10027": null,
+    "customfield_10149": "02/07/2024 15:01: ERROR: Synchronisation not activated\r\n02/12/2024 10:38: ERROR: Synchronisation not activated\r\n02/12/2024 10:38: ERROR: Synchronisation not activated\r\n02/14/2024 12:35: ERROR: Synchronisation not activated\r\n02/27/2024 13:07: ERROR: Synchronisation not activated",
+    "customfield_10028": null,
+    "customfield_10029": null,
+    "resolutiondate": "2024-02-14T14:08:37.000+0100",
+    "workratio": -1,
+    "watches": {
+      "self": "https://plunet.atlassian.net/rest/api/2/issue/TRA-1089/watchers",
+      "watchCount": 3,
+      "isWatching": false
+    },
+    "issuerestriction": {
+      "issuerestrictions": {},
+      "shouldDisplay": false
+    },
+    "created": "2024-02-07T15:01:53.000+0100",
+    "customfield_10260": null,
+    "customfield_10020": null,
+    "customfield_10383": null,
+    "customfield_10021": null,
+    "customfield_10022": null,
+    "customfield_10023": null,
+    "customfield_10024": "2024-02-07T21:27:44.000+0100",
+    "customfield_10025": "null_*:*_5_*:*_0_*|*_10040_*:*_1_*:*_28687764000_*|*_10035_*:*_2_*:*_7878000_*|*_10024_*:*_1_*:*_0_*|*_10037_*:*_2_*:*_177538000_*|*_10039_*:*_1_*:*_425720000",
+    "customfield_10026": null,
+    "customfield_10016": null,
+    "customfield_10258": null,
+    "customfield_10259": null,
+    "customfield_10017": null,
+    "customfield_10019": "0|i07ypz:",
+    "customfield_10416": null,
+    "updated": "2025-01-27T12:52:01.989+0100",
+    "timeoriginalestimate": null,
+    "customfield_10095": null,
+    "customfield_10251": null,
+    "description": "*Problem background*\r\n\r\nIt is possible to create templates for Trados project package creation. This is important to work with automatic workflows. This button doesn't seem to work anymore.\r\n\r\n*Site BM*\r\n\r\nOrder - Job - Job Modal - Specification - Create Trados Studio project package - Create new package template\r\n\r\n*User*\r\n\r\ninternal\r\n\r\n*PBM actual state*\r\n\r\nWhen trying to create a package template, nothing happens after a click at this button.\r\n\r\n*!image-2024-02-07-14-54-36-779.png!*\r\n\r\nLogfile doesn't show an error. This function is also corrupted in Plunet 9.14.7\r\n\r\n*PBM desired state*\r\n\r\nAfter clicking at this button you should get another menu in order to enter a name ** \r\n\r\n*!image-2024-02-07-14-57-49-314.png!*",
+    "customfield_10130": null,
+    "customfield_10252": null,
+    "customfield_10010": null,
+    "customfield_10131": null,
+    "customfield_10253": null,
+    "customfield_10133": null,
+    "customfield_10254": null,
+    "customfield_10255": null,
+    "customfield_10014": "BM-31345",
+    "customfield_10256": null,
+    "customfield_10135": null,
+    "customfield_10257": null,
+    "timetracking": {
+      "timeSpent": "5h",
+      "timeSpentSeconds": 18000
+    },
+    "customfield_10015": null,
+    "customfield_10005": null,
+    "customfield_10127": null,
+    "customfield_10006": null,
+    "customfield_10007": null,
+    "customfield_10008": null,
+    "customfield_10129": {
+      "self": "https://plunet.atlassian.net/rest/api/2/customFieldOption/10112",
+      "value": "1 - Low",
+      "id": "10112"
+    },
+    "attachment": [
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/attachment/13530",
+        "id": "13530",
+        "filename": "image-2024-02-07-14-54-36-779.png",
+        "author": {
+          "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+          "accountId": "712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+          "emailAddress": "daniel.ganz@plunet.com",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/32"
+          },
+          "displayName": "Daniel Ganz",
+          "active": true,
+          "timeZone": "Europe/Berlin",
+          "accountType": "atlassian"
+        },
+        "created": "2024-02-07T14:54:37.000+0100",
+        "size": 2865,
+        "mimeType": "image/png",
+        "content": "https://plunet.atlassian.net/rest/api/2/attachment/content/13530",
+        "thumbnail": "https://plunet.atlassian.net/rest/api/2/attachment/thumbnail/13530"
+      },
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/attachment/13531",
+        "id": "13531",
+        "filename": "image-2024-02-07-14-57-49-314.png",
+        "author": {
+          "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+          "accountId": "712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b",
+          "emailAddress": "daniel.ganz@plunet.com",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:9df49623-f026-4ee0-8ed9-65d89ab6ab3b/2093c2dd-988b-45c6-91b2-2001990f2c6a/32"
+          },
+          "displayName": "Daniel Ganz",
+          "active": true,
+          "timeZone": "Europe/Berlin",
+          "accountType": "atlassian"
+        },
+        "created": "2024-02-07T14:57:49.000+0100",
+        "size": 15769,
+        "mimeType": "image/png",
+        "content": "https://plunet.atlassian.net/rest/api/2/attachment/content/13531",
+        "thumbnail": "https://plunet.atlassian.net/rest/api/2/attachment/thumbnail/13531"
+      },
+      {
+        "self": "https://plunet.atlassian.net/rest/api/2/attachment/13532",
+        "id": "13532",
+        "filename": "image-2024-02-09-16-49-33-375.png",
+        "author": {
+          "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+          "accountId": "712020:15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+          "emailAddress": "aline.saettler@plunet.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+            "24x24": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+            "16x16": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+            "32x32": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png"
+          },
+          "displayName": "Aline Saettler",
+          "active": true,
+          "timeZone": "Europe/Berlin",
+          "accountType": "atlassian"
+        },
+        "created": "2024-02-09T16:49:34.000+0100",
+        "size": 32797,
+        "mimeType": "image/png",
+        "content": "https://plunet.atlassian.net/rest/api/2/attachment/content/13532",
+        "thumbnail": "https://plunet.atlassian.net/rest/api/2/attachment/thumbnail/13532"
+      }
+    ],
+    "customfield_10009": null,
+    "summary": "Button to create Trados project package templates does not work",
+    "customfield_10121": "Button to create Trados project package templates does not work",
+    "customfield_10000": "{pullrequest={dataType=pullrequest, state=MERGED, stateCount=1}, json={\"cachedValue\":{\"errors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":1,\"lastUpdated\":\"2024-02-14T14:10:27.895+0100\",\"stateCount\":1,\"state\":\"MERGED\",\"dataType\":\"pullrequest\",\"open\":false},\"byInstanceType\":{\"GitLab\":{\"count\":1,\"name\":\"GitLab\"}}}}},\"isStale\":true}}",
+    "customfield_10001": {
+      "id": "035f4c6a-3816-46de-b8d8-d3c9a6cf8db9",
+      "name": "Team Tantrum",
+      "avatarUrl": "",
+      "isVisible": true,
+      "isVerified": false,
+      "title": "Team Tantrum",
+      "isShared": true
+    },
+    "customfield_10002": [],
+    "customfield_10123": [
+      "Plunet"
+    ],
+    "customfield_10003": null,
+    "customfield_10125": null,
+    "customfield_10004": null,
+    "customfield_10115": null,
+    "customfield_10633": null,
+    "customfield_10117": null,
+    "customfield_10118": {
+      "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+      "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+      "emailAddress": "kleio.mavridou@plunet.com",
+      "avatarUrls": {
+        "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+        "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+        "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+        "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+      },
+      "displayName": "Kleio Mavridou",
+      "active": false,
+      "timeZone": "Europe/Berlin",
+      "accountType": "atlassian"
+    },
+    "customfield_10515": null,
+    "comment": {
+      "comments": [
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24409",
+          "id": "24409",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "Might be related to GWT.",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-07T21:27:44.000+0100",
+          "updated": "2024-02-07T21:27:44.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24410",
+          "id": "24410",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+            "accountId": "712020:15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+            "emailAddress": "aline.saettler@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "24x24": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "16x16": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "32x32": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png"
+            },
+            "displayName": "Aline Saettler",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "[~accountid:712020:7ba20746-20f1-4963-8f8a-468f0e119f13]  it seems so, this is the error in console\r\n\r\n!image-2024-02-09-16-49-33-375.png!",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+            "accountId": "712020:15d5f782-2dff-4c8c-9ced-dd3a7a544de0",
+            "emailAddress": "aline.saettler@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "24x24": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "16x16": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png",
+              "32x32": "https://secure.gravatar.com/avatar/63c6ce3babe4d838189b48c833fcb5cf?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-6.png"
+            },
+            "displayName": "Aline Saettler",
+            "active": true,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-09T16:49:54.000+0100",
+          "updated": "2024-02-09T16:49:54.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24411",
+          "id": "24411",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "\n    Hello Julia,\n    \n    I have found 2 branches for this issue and created a merge request for each of them, \n    so that it can be merged accordingly.\n    I've created 2 merge requests in total.\n   \n    Best regards - your Jira Script-API!\n    ",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-14T14:08:39.000+0100",
+          "updated": "2024-02-14T14:08:39.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24412",
+          "id": "24412",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "[Julia Arns|https://gitlab.plunet.com/Julia.Arns] mentioned this issue in [a merge request|https://gitlab.plunet.com/dev/plunet/-/merge_requests/4677] of [DEV / Plunet|https://gitlab.plunet.com/dev/plunet] on branch [TRA-1089|https://gitlab.plunet.com/dev/plunet/-/tree/TRA-1089]:{quote}DRAFT: Merges TRA-1089{quote}",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-14T14:08:45.000+0100",
+          "updated": "2024-02-14T14:08:45.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24413",
+          "id": "24413",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "[Julia Arns|https://gitlab.plunet.com/Julia.Arns] mentioned this issue in [a merge request|https://gitlab.plunet.com/gui/plunet/-/merge_requests/597] of [GUI / Plunet|https://gitlab.plunet.com/gui/plunet] on branch [patch9_TRA-1089|https://gitlab.plunet.com/gui/plunet/-/tree/patch9_TRA-1089]:{quote}Draft: TRA-1089{quote}",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-14T14:09:15.000+0100",
+          "updated": "2024-02-14T14:09:15.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24414",
+          "id": "24414",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "[Julia Arns|https://gitlab.plunet.com/Julia.Arns] mentioned this issue in [a merge request|https://gitlab.plunet.com/gui/plunet/-/merge_requests/598] of [GUI / Plunet|https://gitlab.plunet.com/gui/plunet] on branch [TRA-1089|https://gitlab.plunet.com/gui/plunet/-/tree/TRA-1089]:{quote}Draft: TRA-1089{quote}",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3Aec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "accountId": "712020:ec71dd70-6e29-4eac-a46f-f17db55412b8",
+            "emailAddress": "jirascriptapi@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "24x24": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "16x16": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+              "32x32": "https://secure.gravatar.com/avatar/c8d38866830ba041c364b960d3d1da25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+            },
+            "displayName": "Jira Script-API",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-14T14:10:29.000+0100",
+          "updated": "2024-02-14T14:10:29.000+0100",
+          "jsdPublic": true
+        },
+        {
+          "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment/24415",
+          "id": "24415",
+          "author": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "body": "Tested in Plunet 9 and 10, package templates can be added, deleted and applied (/)",
+          "updateAuthor": {
+            "self": "https://plunet.atlassian.net/rest/api/2/user?accountId=712020%3A7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "accountId": "712020:7ba20746-20f1-4963-8f8a-468f0e119f13",
+            "emailAddress": "kleio.mavridou@plunet.com",
+            "avatarUrls": {
+              "48x48": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "24x24": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "16x16": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png",
+              "32x32": "https://secure.gravatar.com/avatar/bb55888eaca64566f6a1c7b2061abd87?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FKM-0.png"
+            },
+            "displayName": "Kleio Mavridou",
+            "active": false,
+            "timeZone": "Europe/Berlin",
+            "accountType": "atlassian"
+          },
+          "created": "2024-02-20T15:55:42.000+0100",
+          "updated": "2024-02-20T15:55:42.000+0100",
+          "jsdPublic": true
+        }
+      ],
+      "self": "https://plunet.atlassian.net/rest/api/2/issue/18259/comment",
+      "maxResults": 7,
+      "total": 7,
+      "startAt": 0
+    }
+  }
+}

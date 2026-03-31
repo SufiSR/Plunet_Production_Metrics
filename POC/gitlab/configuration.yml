@@ -1,0 +1,17 @@
+gitlab:
+  # Project path as shown in the URL: https://gitlab.plunet.com/dev/plunet/-/tags -> dev/plunet
+  project_path: dev/plunet
+  # Tags API pagination
+  per_page: 100
+  # Keep tags whose commit committed_date is on/after this window (from today).
+  lookback_years: 2
+  # Target branches for merged MRs used in lead-time calculation.
+  target_branches:
+    - master
+    - 9.x
+    - 10.x
+    - 11.x
+  # Tag names with -<marker>... are not customer releases (see gitlab_client regex).
+  non_customer_release_markers:
+    - rc
+    - beta
