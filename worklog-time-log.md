@@ -33,6 +33,9 @@ Record only actual active work time.
 | DEVOPS-437 | implementation | 2026-03-31 16:25 | 2026-03-31 16:27 | 2m | Added hardening for version normalization edge cases, deterministic MR selection for MTTR path A, stale lead-post-production clearing, and extra regression tests |
 | DEVOPS-437 | validation | 2026-03-31 16:27 | 2026-03-31 16:28 | 1m | Re-ran Story 7 and scheduler tests after hardening (9 passed) and checked lints |
 | DEVOPS-437 | jira-update | 2026-03-31 16:34 | 2026-03-31 16:35 | 1m | Added Jira progress comment with acceptance-criteria gap check and deferred-scope notes |
+| DEVOPS-437 | jira-update | 2026-03-31 16:36 | 2026-03-31 16:37 | 1m | Finalized code delivery: staged files, committed DEVOPS-437 changes, and pushed to origin/main |
+| DEVOPS-437 | jira-update | 2026-03-31 16:38 | 2026-03-31 16:38 | 1m | Updated Jira solution field and prepared completion transition (close step requires explicit log-work) |
+| DEVOPS-437 | jira-update | 2026-03-31 16:38 | 2026-03-31 16:38 | 1m | Executed close transition with transition-level log-work payload due workflow validator requirement |
 
 ## Active session template
 
