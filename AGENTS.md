@@ -103,6 +103,8 @@ Use these documents as canonical references before changing behavior:
 - Do not drop required target branches (`master`, maintenance branches like `9.x`, `10.x`, `11.x`) unless intentionally reconfigured.
 - Continue excluding pre-release markers from customer-release metrics according to configurable rules.
 - All commits must be pushed to GitLab repository `https://gitlab.plunet.com/operations/dora-metrics.git`.
+- If the local workspace is not yet a Git repository, initialize Git and set `origin` to `https://gitlab.plunet.com/operations/dora-metrics.git` before the first commit.
+- If `origin` is missing or points elsewhere, correct it before committing/pushing.
 - Commit messages must follow the active Jira issue key format: `git commit -m "DEVOPS-<issue-number> <short summary>"`.
 - For epic-level scope when no child key is provided, use: `git commit -m "DEVOPS-429 DORA Metrics App"`.
 
