@@ -19,6 +19,8 @@ Record only actual active work time.
 | DEVOPS-434 | planning | 2026-03-31 15:07 | 2026-03-31 15:08 | 1m | Reviewed issue details and prepared approved implementation plan with estimate |
 | DEVOPS-434 | implementation | 2026-03-31 15:09 | 2026-03-31 15:12 | 3m | Implemented Jira production bug collector with health/worklog/changelog handling and DB upserts |
 | DEVOPS-434 | validation | 2026-03-31 15:12 | 2026-03-31 15:12 | 1m | Ran backend unit tests including new Jira collector tests (18 passed) |
+| DEVOPS-434 | jira-update | 2026-03-31 15:22 | 2026-03-31 15:22 | 1m | Performed commit/push and prepared Jira solution, worklog, and Done transition updates |
+| DEVOPS-434 | jira-update | 2026-03-31 15:23 | 2026-03-31 15:23 | 1m | Jira Done transition required explicit log-work entry; prepared transition-compliant update |
 
 ## Active session template
 
