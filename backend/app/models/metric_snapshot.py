@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Index, Numeric, String, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -20,7 +20,12 @@ class MetricSnapshot(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger()
+        .with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     repository_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("repository.id"))
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)

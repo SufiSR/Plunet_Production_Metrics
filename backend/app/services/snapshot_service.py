@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config_schema import ConfigurationSchema
@@ -39,7 +39,6 @@ def refresh_snapshots(
         windows.extend(_build_period_windows(period_type=period_type, start_date=start_date, end_date=end_date))
 
     written = 0
-    next_snapshot_id = _next_metric_snapshot_id(session)
     for repository_id in repositories:
         for window in windows:
             values = calculate_period_metrics(
@@ -57,7 +56,6 @@ def refresh_snapshots(
             )
             session.add(
                 MetricSnapshot(
-                    id=next_snapshot_id,
                     repository_id=repository_id,
                     period_start=window.period_start,
                     period_end=window.period_end,
@@ -70,7 +68,6 @@ def refresh_snapshots(
                     lead_post_production_median_minutes=values.lead_post_production_median_minutes,
                 )
             )
-            next_snapshot_id += 1
             written += 1
     session.commit()
     return written
@@ -141,10 +138,3 @@ def _next_month(value: date) -> date:
     if value.month == 12:
         return date(value.year + 1, 1, 1)
     return date(value.year, value.month + 1, 1)
-
-
-def _next_metric_snapshot_id(session: Session) -> int:
-    current_max = session.execute(select(func.max(MetricSnapshot.id))).scalars().one()
-    if current_max is None:
-        return 1
-    return int(current_max) + 1

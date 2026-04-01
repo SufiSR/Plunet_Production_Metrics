@@ -58,6 +58,7 @@ def test_calculate_period_metrics_returns_expected_values() -> None:
                 id=10,
                 jira_key="BUG-1",
                 healthy=True,
+                jira_created_at_valid=True,
                 priority="Critical",
                 created_at=_utc(2026, 4, 1),
                 first_fix_release_date=_utc(2026, 4, 7, 8, 0),
@@ -147,6 +148,31 @@ def test_refresh_snapshots_writes_rows_for_all_period_types() -> None:
     assert written > 0
     assert len(rows) == written
     assert {"WEEK", "MONTH", "QUARTER"}.issubset(types)
+
+
+def test_refresh_snapshots_uses_database_assigned_ids() -> None:
+    with _session() as db:
+        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(
+            Release(
+                id=1,
+                repository_id=1,
+                tag_name="v10.0.0",
+                customer_release=True,
+                commit_sha="a" * 40,
+                committed_at=_utc(2026, 4, 2, 8, 0),
+            )
+        )
+        db.commit()
+
+        config = ConfigurationSchema.model_validate({"backend": {"lookback_days": 15}})
+        written = refresh_snapshots(db, config=config, now=_utc(2026, 4, 15))
+        rows = db.execute(select(MetricSnapshot)).scalars().all()
+
+    assert written == len(rows)
+    ids = [row.id for row in rows]
+    assert all(i is not None and i > 0 for i in ids)
+    assert len(ids) == len(set(ids))
 
 
 def test_merge_request_uses_updated_at_for_local_row_lifecycle() -> None:

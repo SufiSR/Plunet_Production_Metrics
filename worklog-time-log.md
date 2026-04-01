@@ -95,6 +95,10 @@ Record only actual active work time.
 | DEVOPS-464 | implementation | 2026-04-01 17:22 | 2026-04-01 17:28 | 6m | first_commit_at revalidation for MRs in UTC lookback (updated_at/merged_at); regression test |
 | DEVOPS-465 | implementation | 2026-04-01 17:28 | 2026-04-01 17:34 | 6m | Jira search expand=changelog with truncated-embedded fallback; changelog helper unit tests |
 | DEVOPS-462 | jira-update | 2026-04-01 17:34 | 2026-04-01 17:42 | 8m | Jira workflow for 462/464/465 (components on 464/465), solution + timetracking, worklogs, Close issue with transition worklog |
+| DEVOPS-458 | implementation | 2026-04-01 20:10 | 2026-04-01 20:18 | 8m | Removed manual metric_snapshot id assignment; DB autoincrement; Integer PK variant on SQLite; regression test for assigned ids |
+| DEVOPS-463 | implementation | 2026-04-01 20:18 | 2026-04-01 20:22 | 4m | Mock load_runtime_config in nightly sync unit tests; align partial-failure test with skipped links/snapshots |
+| DEVOPS-463 | jira-update | 2026-04-01 20:22 | 2026-04-01 20:28 | 6m | Close parent DEVOPS-463: solution, worklog, transitions |
+| DEVOPS-463 | jira-update | 2026-04-01 20:28 | 2026-04-01 20:29 | 1m | Jira Close issue transition: required worklog on transition payload |
 
 ## Active session template
 
