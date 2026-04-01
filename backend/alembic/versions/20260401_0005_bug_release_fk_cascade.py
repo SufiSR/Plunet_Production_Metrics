@@ -16,34 +16,49 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Names must match 20260331_0001_initial_schema (Alembic op.f identifiers).
     op.drop_constraint(
-        "bug_release_bug_id_fkey", "bug_release", type_="foreignkey",
+        "fk_bug_release_bug_id_production_bug", "bug_release", type_="foreignkey",
     )
     op.drop_constraint(
-        "bug_release_release_id_fkey", "bug_release", type_="foreignkey",
+        "fk_bug_release_release_id_release", "bug_release", type_="foreignkey",
     )
     op.create_foreign_key(
-        "bug_release_bug_id_fkey", "bug_release",
-        "production_bug", ["bug_id"], ["id"], ondelete="CASCADE",
+        "fk_bug_release_bug_id_production_bug",
+        "bug_release",
+        "production_bug",
+        ["bug_id"],
+        ["id"],
+        ondelete="CASCADE",
     )
     op.create_foreign_key(
-        "bug_release_release_id_fkey", "bug_release",
-        "release", ["release_id"], ["id"], ondelete="CASCADE",
+        "fk_bug_release_release_id_release",
+        "bug_release",
+        "release",
+        ["release_id"],
+        ["id"],
+        ondelete="CASCADE",
     )
 
 
 def downgrade() -> None:
     op.drop_constraint(
-        "bug_release_release_id_fkey", "bug_release", type_="foreignkey",
+        "fk_bug_release_release_id_release", "bug_release", type_="foreignkey",
     )
     op.drop_constraint(
-        "bug_release_bug_id_fkey", "bug_release", type_="foreignkey",
+        "fk_bug_release_bug_id_production_bug", "bug_release", type_="foreignkey",
     )
     op.create_foreign_key(
-        "bug_release_bug_id_fkey", "bug_release",
-        "production_bug", ["bug_id"], ["id"],
+        "fk_bug_release_bug_id_production_bug",
+        "bug_release",
+        "production_bug",
+        ["bug_id"],
+        ["id"],
     )
     op.create_foreign_key(
-        "bug_release_release_id_fkey", "bug_release",
-        "release", ["release_id"], ["id"],
+        "fk_bug_release_release_id_release",
+        "bug_release",
+        "release",
+        ["release_id"],
+        ["id"],
     )
