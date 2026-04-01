@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +28,7 @@ class JiraConfig(BaseModel):
 
 
 class NotificationsConfig(BaseModel):
-    webhook_url: Optional[str] = None
+    webhook_url: str | None = None
 
 
 class ConfigurationSchema(BaseModel):

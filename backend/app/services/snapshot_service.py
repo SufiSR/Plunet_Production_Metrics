@@ -42,7 +42,11 @@ def refresh_snapshots(
 
     windows: list[PeriodWindow] = []
     for period_type in PERIOD_TYPES:
-        windows.extend(_build_period_windows(period_type=period_type, start_date=start_date, end_date=end_date))
+        windows.extend(
+            _build_period_windows(
+                period_type=period_type, start_date=start_date, end_date=end_date,
+            )
+        )
 
     mttr_by_window: dict[tuple[date, date], int | None] = {}
     mttr_resolution_by_window: dict[tuple[date, date], int | None] = {}

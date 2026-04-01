@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Callable
 
 import httpx
 from sqlalchemy import delete, select, update
@@ -52,7 +52,7 @@ def _create_nightly_sync_log(session_factory: Callable[[], Session]) -> int:
     def _create(db: Session) -> int:
         row = SyncLog(
             source="nightly",
-            started_at=datetime.now(timezone.utc),  # noqa: UP017
+            started_at=datetime.now(timezone.utc),
             status="running",
         )
         db.add(row)
@@ -75,7 +75,7 @@ def _finish_nightly_sync_log(
         row = db.get(SyncLog, log_id)
         if row is not None:
             row.status = status
-            row.finished_at = datetime.now(timezone.utc)  # noqa: UP017
+            row.finished_at = datetime.now(timezone.utc)
             row.records_processed = records_processed
             row.error_message = error_message
             db.commit()
@@ -264,13 +264,13 @@ def _notify_webhook(url: str | None, payload: dict[str, str | int]) -> None:
 
 def _resolve_orphaned_sync_logs(session_factory: Callable[[], Session]) -> None:
     def _resolve(db: Session) -> int:
-        threshold = datetime.now(timezone.utc) - timedelta(hours=4)  # noqa: UP017
+        threshold = datetime.now(timezone.utc) - timedelta(hours=4)
         db.execute(
             update(SyncLog)
             .where(SyncLog.status == "running", SyncLog.started_at < threshold)
             .values(
                 status="crashed",
-                finished_at=datetime.now(timezone.utc),  # noqa: UP017
+                finished_at=datetime.now(timezone.utc),
                 error_message="Resolved as crashed: process did not complete",
             )
         )

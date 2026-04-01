@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.base import Base
@@ -168,6 +168,11 @@ def test_issue_changelog_histories_missing_requests_full_fetch() -> None:
 
 def test_upsert_invalid_jira_created_has_no_synthetic_timestamp() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _rec):  # type: ignore[no-untyped-def]
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(engine)
     maker = sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)
     with maker() as db:

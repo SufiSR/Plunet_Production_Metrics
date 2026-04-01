@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config_schema import ConfigurationSchema
@@ -26,6 +26,11 @@ def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0) -> dat
 
 def _session() -> Session:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _rec):  # type: ignore[no-untyped-def]
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(engine)
     maker = sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)
     return maker()
@@ -43,6 +48,7 @@ def test_map_bugs_to_releases_normalizes_version_and_deduplicates_links() -> Non
                 active=True,
             )
         )
+        db.flush()
         db.add_all(
             [
                 Release(
@@ -94,6 +100,7 @@ def test_resolve_mttr_alpha_uses_mr_then_fix_version_with_expected_path_labels()
                 active=True,
             )
         )
+        db.flush()
         db.add_all(
             [
                 Release(
@@ -175,6 +182,7 @@ def test_compute_lead_post_production_handles_valid_and_invalid_intervals() -> N
                 active=True,
             )
         )
+        db.flush()
         db.add_all(
             [
                 ProductionBug(
@@ -238,6 +246,7 @@ def test_resolve_mttr_alpha_picks_earliest_mr_tag_date_for_same_jira_key() -> No
                 active=True,
             )
         )
+        db.flush()
         db.add_all(
             [
                 MergeRequest(
@@ -295,6 +304,7 @@ def test_compute_lead_post_production_clears_stale_value_when_jira_key_missing()
                 active=True,
             )
         )
+        db.flush()
         stale = MergeRequest(
             id=91,
             repository_id=1,

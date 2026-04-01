@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config_schema import ConfigurationSchema
@@ -28,6 +28,11 @@ def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0) -> dat
 
 def _session() -> Session:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _rec):  # type: ignore[no-untyped-def]
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(engine)
     maker = sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)
     return maker()
@@ -35,7 +40,11 @@ def _session() -> Session:
 
 def test_calculate_period_metrics_returns_expected_values() -> None:
     with _session() as db:
-        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(Repository(
+            id=1, gitlab_id=101, name="repo", path="ops/repo",
+            default_branch="main", active=True,
+        ))
+        db.flush()
         r1 = Release(
             id=1,
             repository_id=1,
@@ -65,6 +74,7 @@ def test_calculate_period_metrics_returns_expected_values() -> None:
                 mttr_alpha_minutes=180,
             )
         )
+        db.flush()
         db.add(BugRelease(bug_id=10, release_id=2))
         db.add_all(
             [
@@ -113,7 +123,10 @@ def test_calculate_period_metrics_returns_expected_values() -> None:
 
 def test_change_failure_rate_handles_no_releases_without_division_by_zero() -> None:
     with _session() as db:
-        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(Repository(
+            id=1, gitlab_id=101, name="repo", path="ops/repo",
+            default_branch="main", active=True,
+        ))
         db.commit()
         rate = calculate_change_failure_rate(
             db,
@@ -126,7 +139,11 @@ def test_change_failure_rate_handles_no_releases_without_division_by_zero() -> N
 
 def test_refresh_snapshots_writes_rows_for_all_period_types() -> None:
     with _session() as db:
-        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(Repository(
+            id=1, gitlab_id=101, name="repo", path="ops/repo",
+            default_branch="main", active=True,
+        ))
+        db.flush()
         db.add(
             Release(
                 id=1,
@@ -152,7 +169,11 @@ def test_refresh_snapshots_writes_rows_for_all_period_types() -> None:
 
 def test_refresh_snapshots_uses_database_assigned_ids() -> None:
     with _session() as db:
-        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(Repository(
+            id=1, gitlab_id=101, name="repo", path="ops/repo",
+            default_branch="main", active=True,
+        ))
+        db.flush()
         db.add(
             Release(
                 id=1,
@@ -177,7 +198,11 @@ def test_refresh_snapshots_uses_database_assigned_ids() -> None:
 
 def test_merge_request_uses_updated_at_for_local_row_lifecycle() -> None:
     with _session() as db:
-        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        db.add(Repository(
+            id=1, gitlab_id=101, name="repo", path="ops/repo",
+            default_branch="main", active=True,
+        ))
+        db.flush()
         mr = MergeRequest(
             id=200,
             repository_id=1,

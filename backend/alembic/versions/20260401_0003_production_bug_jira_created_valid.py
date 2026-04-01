@@ -8,6 +8,7 @@ Create Date: 2026-04-01
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "20260401_0003"
@@ -26,7 +27,10 @@ def upgrade() -> None:
             server_default=sa.text("true"),
         ),
     )
-    op.alter_column("production_bug", "created_at", existing_type=sa.DateTime(timezone=True), nullable=True)
+    op.alter_column(
+        "production_bug", "created_at",
+        existing_type=sa.DateTime(timezone=True), nullable=True,
+    )
 
 
 def downgrade() -> None:
@@ -37,5 +41,8 @@ def downgrade() -> None:
             "WHERE created_at IS NULL"
         )
     )
-    op.alter_column("production_bug", "created_at", existing_type=sa.DateTime(timezone=True), nullable=False)
+    op.alter_column(
+        "production_bug", "created_at",
+        existing_type=sa.DateTime(timezone=True), nullable=False,
+    )
     op.drop_column("production_bug", "jira_created_at_valid")

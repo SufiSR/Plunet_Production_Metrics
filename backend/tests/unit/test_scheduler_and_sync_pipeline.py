@@ -45,7 +45,10 @@ def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(m
         "collect_jira_production_bugs",
         lambda _db, **_kwargs: order.append("jira") or 11,
     )
-    monkeypatch.setattr(sync_pipeline, "_map_bugs_to_releases", lambda _db: order.append("links") or 12)
+    monkeypatch.setattr(
+        sync_pipeline, "_map_bugs_to_releases",
+        lambda _db: order.append("links") or 12,
+    )
     monkeypatch.setattr(
         sync_pipeline,
         "_resolve_mttr_alpha_fix_releases",
@@ -67,7 +70,10 @@ def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(m
 
     payload = sync_pipeline.run_nightly_sync(config=ConfigurationSchema())
     assert payload["status"] == "success"
-    assert order == ["gitlab", "jira", "links", "mttr_alpha", "hydrate_rfq", "lead_post_prod", "snapshots"]
+    assert order == [
+        "gitlab", "jira", "links", "mttr_alpha",
+        "hydrate_rfq", "lead_post_prod", "snapshots",
+    ]
 
 
 def test_run_nightly_sync_partial_failure_skips_links_mttr_hydrate_lead_post_but_runs_snapshots(
@@ -92,7 +98,10 @@ def test_run_nightly_sync_partial_failure_skips_links_mttr_hydrate_lead_post_but
         "collect_jira_production_bugs",
         lambda _db, **_kwargs: order.append("jira") or 7,
     )
-    monkeypatch.setattr(sync_pipeline, "_map_bugs_to_releases", lambda _db: order.append("links") or 3)
+    monkeypatch.setattr(
+        sync_pipeline, "_map_bugs_to_releases",
+        lambda _db: order.append("links") or 3,
+    )
     monkeypatch.setattr(
         sync_pipeline,
         "_resolve_mttr_alpha_fix_releases",

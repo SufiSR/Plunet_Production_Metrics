@@ -42,7 +42,7 @@ def _parse_dt(value: str | None) -> datetime | None:
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)  # noqa: UP017
+        return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
 
 
@@ -100,7 +100,10 @@ def _parse_semver(value: str) -> tuple[int, int, int] | None:
 
 
 def _max_semver(values: list[str]) -> tuple[int, int, int] | None:
-    parsed = [version for version in (_parse_semver(value) for value in values) if version is not None]
+    parsed = [
+        version for version in (_parse_semver(value) for value in values)
+        if version is not None
+    ]
     if not parsed:
         return None
     return max(parsed)
@@ -246,7 +249,10 @@ def issue_changelog_histories_from_search_issue(
     return histories, incomplete
 
 
-def first_ready_for_qa_at(changelog_items: list[dict[str, Any]], ready_status_names: list[str]) -> datetime | None:
+def first_ready_for_qa_at(
+    changelog_items: list[dict[str, Any]],
+    ready_status_names: list[str],
+) -> datetime | None:
     allowed = {name.strip().lower() for name in ready_status_names if name.strip()}
     if not allowed:
         return None
@@ -324,7 +330,9 @@ class JiraBugsClient:
         except httpx.HTTPStatusError as exc:
             if _is_retryable_http_exception(exc):
                 raise
-            raise RuntimeError(f"Jira API request failed: {exc.response.status_code} {url}") from exc
+            raise RuntimeError(
+                f"Jira API request failed: {exc.response.status_code} {url}"
+            ) from exc
         return response.json()
 
     def search_bugs(
@@ -363,7 +371,9 @@ class JiraBugsClient:
         )
         return payload if isinstance(payload, dict) else None
 
-    def list_issue_worklogs(self, issue_key: str, *, max_results: int = 100) -> list[dict[str, Any]]:
+    def list_issue_worklogs(
+        self, issue_key: str, *, max_results: int = 100,
+    ) -> list[dict[str, Any]]:
         worklogs: list[dict[str, Any]] = []
         start_at = 0
         while True:
@@ -381,7 +391,9 @@ class JiraBugsClient:
                 break
         return worklogs
 
-    def list_issue_changelog(self, issue_key: str, *, max_results: int = 100) -> list[dict[str, Any]]:
+    def list_issue_changelog(
+        self, issue_key: str, *, max_results: int = 100,
+    ) -> list[dict[str, Any]]:
         histories: list[dict[str, Any]] = []
         start_at = 0
         while True:
@@ -427,7 +439,9 @@ def _upsert_production_bug(
     ready_for_qa_at: datetime | None,
     total_worklog_seconds: int,
 ) -> ProductionBug:
-    bug = db.execute(select(ProductionBug).where(ProductionBug.jira_key == issue_key)).scalar_one_or_none()
+    bug = db.execute(
+        select(ProductionBug).where(ProductionBug.jira_key == issue_key)
+    ).scalar_one_or_none()
     if bug is None:
         bug = ProductionBug(jira_key=issue_key, healthy=health.healthy)
         db.add(bug)
@@ -445,7 +459,8 @@ def _upsert_production_bug(
     closed_at = _parse_dt(str(fields.get("resolutiondate") or ""))
     if created_at is None:
         logger.warning(
-            "Jira issue %s has missing or unparseable created; excluding from creation-time metrics",
+            "Jira issue %s has missing or unparseable created; "
+        "excluding from creation-time metrics",
             issue_key,
         )
         bug.jira_created_at_valid = False
@@ -453,7 +468,8 @@ def _upsert_production_bug(
         mttr_minutes = None
         invalid_created_msg = "invalid or missing Jira created timestamp"
         bug.healthmemo = (
-            f"{invalid_created_msg}; {health.healthmemo}" if health.healthmemo else invalid_created_msg
+            f"{invalid_created_msg}; {health.healthmemo}"
+            if health.healthmemo else invalid_created_msg
         )
     else:
         bug.jira_created_at_valid = True
@@ -484,7 +500,9 @@ def _upsert_production_bug(
     return bug
 
 
-def _sync_issue_worklogs(db: Session, *, bug_id: int, parsed_worklogs: list[dict[str, Any]]) -> None:
+def _sync_issue_worklogs(
+    db: Session, *, bug_id: int, parsed_worklogs: list[dict[str, Any]],
+) -> None:
     incoming_by_id = {w["jira_worklog_id"]: w for w in parsed_worklogs}
     existing = db.execute(
         select(IssueWorklog).where(IssueWorklog.bug_id == bug_id)
@@ -549,7 +567,9 @@ def hydrate_merge_request_jira_ready_for_qa(
     keys = sorted(
         {
             k
-            for k in db.execute(select(MergeRequest.jira_key).where(MergeRequest.jira_key.isnot(None)))
+            for k in db.execute(
+                select(MergeRequest.jira_key).where(MergeRequest.jira_key.isnot(None))
+            )
             .scalars()
             .all()
             if k and k not in with_bug_ready
@@ -582,7 +602,7 @@ def collect_jira_production_bugs(
     jira_token: str,
     per_page: int = 100,
 ) -> int:
-    started_at = datetime.now(timezone.utc)  # noqa: UP017
+    started_at = datetime.now(timezone.utc)
     sync_log = SyncLog(source="jira", started_at=started_at, status="running")
     db.add(sync_log)
     db.flush()
@@ -630,8 +650,14 @@ def collect_jira_production_bugs(
                     if isinstance(maybe_fields, dict):
                         parent_fields = maybe_fields
 
-                parent_key = str(parent_payload.get("key") or "").strip() if isinstance(parent_payload, dict) else ""
-                parent_type = str((parent_fields.get("issuetype") or {}).get("name") or "").strip() or None
+                parent_key = (
+                    str(parent_payload.get("key") or "").strip()
+                    if isinstance(parent_payload, dict) else ""
+                )
+                parent_type = (
+                    str((parent_fields.get("issuetype") or {}).get("name") or "").strip()
+                    or None
+                )
                 parent_summary = str(parent_fields.get("summary") or "").strip() or None
 
                 affects_versions = _extract_named_values(issue_fields.get("versions"))
@@ -658,19 +684,29 @@ def collect_jira_production_bugs(
                         parent_issue = jira.get_issue(parent_key, fields=fields) or {}
                         parent_cache[parent_key] = parent_issue
                     parent_issue_fields = (
-                        parent_issue.get("fields") if isinstance(parent_issue.get("fields"), dict) else {}
+                        parent_issue.get("fields")
+                    if isinstance(parent_issue.get("fields"), dict) else {}
                     )
-                    parent_affects_versions = _extract_named_values(parent_issue_fields.get("versions"))
-                    parent_fix_versions = _extract_named_values(parent_issue_fields.get("fixVersions"))
+                    parent_affects_versions = _extract_named_values(
+                        parent_issue_fields.get("versions")
+                    )
+                    parent_fix_versions = _extract_named_values(
+                        parent_issue_fields.get("fixVersions")
+                    )
                     parent_indicator_cf10114 = (
                         str(parent_issue_fields.get("customfield_10114") or "").strip() or None
                     )
-                    parent_customer_names = _to_string_list(parent_issue_fields.get("customfield_10123"))
+                    parent_customer_names = _to_string_list(
+                        parent_issue_fields.get("customfield_10123")
+                    )
                     parent_type = (
                         str((parent_issue_fields.get("issuetype") or {}).get("name") or "").strip()
                         or parent_type
                     )
-                    parent_summary = str(parent_issue_fields.get("summary") or "").strip() or parent_summary
+                    parent_summary = (
+                        str(parent_issue_fields.get("summary") or "").strip()
+                        or parent_summary
+                    )
 
                 health = evaluate_issue_health(
                     issue_type=issue_type,
@@ -686,7 +722,9 @@ def collect_jira_production_bugs(
                     parent_customer_names=parent_customer_names,
                 )
 
-                changelog_items, changelog_incomplete = issue_changelog_histories_from_search_issue(issue)
+                changelog_items, changelog_incomplete = (
+                    issue_changelog_histories_from_search_issue(issue)
+                )
                 if changelog_incomplete:
                     changelog_items = jira.list_issue_changelog(issue_key, max_results=per_page)
                 ready_for_qa_at = first_ready_for_qa_at(changelog_items, ready_status_names)
@@ -698,7 +736,9 @@ def collect_jira_production_bugs(
                     )
                     if parsed is not None
                 ]
-                total_worklog_seconds = sum(worklog["time_spent_seconds"] for worklog in parsed_worklogs)
+                total_worklog_seconds = sum(
+                    worklog["time_spent_seconds"] for worklog in parsed_worklogs
+                )
 
                 bug = _upsert_production_bug(
                     db,
@@ -712,13 +752,13 @@ def collect_jira_production_bugs(
                 processed += 1
 
         sync_log.status = "success"
-        sync_log.finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        sync_log.finished_at = datetime.now(timezone.utc)
         sync_log.records_processed = processed
         db.commit()
         return processed
     except Exception as exc:
         db.rollback()
-        finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        finished_at = datetime.now(timezone.utc)
         db.add(
             SyncLog(
                 source="jira",

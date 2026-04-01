@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.base import Base
@@ -11,6 +10,7 @@ from app.models.merge_request import MergeRequest
 from app.models.release import Release
 from app.models.repository import Repository
 from app.services.gitlab_release_collector import (
+    GitLabTagsClient,
     _deduplicate_merge_requests,
     _effective_commit_sha,
     _extract_jira_key,
@@ -23,7 +23,6 @@ from app.services.gitlab_release_collector import (
     _parse_merge_request,
     _reconcile_repository_releases,
     _sync_first_commit_timestamps,
-    GitLabTagsClient,
     parse_tag_version,
 )
 
@@ -152,7 +151,9 @@ def test_list_merge_request_commits_paginates() -> None:
 
     try:
         client._get_json = fake_get_json  # type: ignore[method-assign]
-        commits = client.list_merge_request_commits("group/project", merge_request_iid=42, per_page=2)
+        commits = client.list_merge_request_commits(
+            "group/project", merge_request_iid=42, per_page=2,
+        )
         assert [item["id"] for item in commits] == ["c1", "c2", "c3"]
     finally:
         client.close()
@@ -225,6 +226,11 @@ def test_list_merged_merge_requests_sends_updated_after_and_filters_by_merged_at
 
 def _session() -> Session:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _rec):  # type: ignore[no-untyped-def]
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(engine)
     maker = sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)
     return maker()
@@ -263,6 +269,7 @@ def test_sync_first_commit_recomputes_for_mrs_in_lookback_window() -> None:
                 active=True,
             )
         )
+        db.flush()
         db.add(
             MergeRequest(
                 id=20,
@@ -328,6 +335,7 @@ def test_map_merge_requests_clears_stale_fields_when_refs_disappear() -> None:
                 active=True,
             )
         )
+        db.flush()
         db.add(
             Release(
                 id=10,
@@ -407,6 +415,7 @@ def test_reconcile_repository_releases_removes_tags_missing_upstream() -> None:
                 active=True,
             )
         )
+        db.flush()
         db.add_all(
             [
                 Release(

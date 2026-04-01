@@ -66,8 +66,8 @@ def _parse_dt(value: str | None) -> datetime | None:
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)  # noqa: UP017
-    return parsed.astimezone(timezone.utc)  # noqa: UP017
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _hours_between(start: datetime, end: datetime) -> Decimal:
@@ -100,7 +100,9 @@ def _merged_gitlab_settings(
     defaults: ConfigurationSchema,
 ) -> tuple[list[str], list[str], list[str]]:
     project_paths = list(defaults.gitlab.project_paths)
-    target_branches = [branch.strip() for branch in defaults.gitlab.target_branches if branch.strip()]
+    target_branches = [
+        branch.strip() for branch in defaults.gitlab.target_branches if branch.strip()
+    ]
     markers = [m.strip().lower() for m in defaults.gitlab.non_customer_release_markers if m.strip()]
 
     if not markers:
@@ -424,11 +426,14 @@ def _reconcile_repository_releases(
         return 0
 
     existing_tags = set(
-        db.execute(select(Release.tag_name).where(Release.repository_id == repository_id)).scalars().all()
+        db.execute(
+            select(Release.tag_name).where(Release.repository_id == repository_id)
+        ).scalars().all()
     )
     if len(existing_tags) > 10 and len(seen_tag_names) < len(existing_tags) // 2:
         logger.warning(
-            "skipping release reconciliation: tag fetch set much smaller than DB (possible incomplete API page)",
+            "skipping release reconciliation: tag fetch set much smaller than DB "
+        "(possible incomplete API page)",
             extra={
                 "repository_id": repository_id,
                 "seen_count": len(seen_tag_names),
@@ -631,7 +636,8 @@ def _map_merge_requests_to_customer_releases(
             continue
 
         eligible_releases = [
-            release for release in matching_releases if release.committed_at >= merge_request.merged_at
+            release for release in matching_releases
+            if release.committed_at >= merge_request.merged_at
         ]
         if not eligible_releases:
             merge_request.lead_time_match_status = "no_customer_tag_after_merge"
@@ -664,7 +670,7 @@ def collect_gitlab_tags_and_releases(
     per_page: int = 100,
     mr_mapping_cooldown_seconds: float = 0.05,
 ) -> int:
-    started_at = datetime.now(timezone.utc)  # noqa: UP017
+    started_at = datetime.now(timezone.utc)
     sync_log = SyncLog(source="gitlab", started_at=started_at, status="running")
     db.add(sync_log)
     db.flush()
@@ -738,13 +744,13 @@ def collect_gitlab_tags_and_releases(
                 )
 
         sync_log.status = "success"
-        sync_log.finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        sync_log.finished_at = datetime.now(timezone.utc)
         sync_log.records_processed = processed
         db.commit()
         return processed
     except Exception as exc:
         db.rollback()
-        finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        finished_at = datetime.now(timezone.utc)
         db.add(
             SyncLog(
                 source="gitlab",
