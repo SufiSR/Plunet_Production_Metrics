@@ -31,7 +31,8 @@ class ProductionBug(Base):
     indicator_cf10123: Mapped[str | None] = mapped_column(Text)
     healthy: Mapped[bool] = mapped_column(Boolean, nullable=False)
     healthmemo: Mapped[str | None] = mapped_column(String(512))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    jira_created_at_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     mttr_minutes: Mapped[int | None]

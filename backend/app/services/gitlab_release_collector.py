@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from time import sleep
 from typing import Any
 from urllib.parse import quote
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 from tenacity import (
     retry,
@@ -169,7 +169,7 @@ def _parse_merge_request(raw: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _lookback_from(days: int) -> datetime:
-    lookback_date = date.today() - timedelta(days=days)
+    lookback_date = datetime.now(timezone.utc).date() - timedelta(days=days)
     return datetime(
         lookback_date.year,
         lookback_date.month,
@@ -270,6 +270,7 @@ class GitLabTagsClient:
                     "order_by": "updated_at",
                     "sort": "desc",
                     "target_branch": target_branch,
+                    "updated_after": lookback_start.isoformat(),
                     "page": page,
                     "per_page": per_page,
                 },
@@ -405,6 +406,30 @@ def _upsert_release(
     release.committed_at = committed_at
 
 
+def _reconcile_repository_releases(
+    db: Session,
+    *,
+    repository_id: int,
+    seen_tag_names: set[str],
+) -> int:
+    if seen_tag_names:
+        existing_tags = set(
+            db.execute(select(Release.tag_name).where(Release.repository_id == repository_id)).scalars().all()
+        )
+        stale_tags = existing_tags - seen_tag_names
+        if not stale_tags:
+            return 0
+        result = db.execute(
+            delete(Release).where(
+                Release.repository_id == repository_id,
+                Release.tag_name.in_(stale_tags),
+            )
+        )
+        return int(result.rowcount or 0)
+    result = db.execute(delete(Release).where(Release.repository_id == repository_id))
+    return int(result.rowcount or 0)
+
+
 def _upsert_merge_request(
     db: Session,
     repository_id: int,
@@ -467,12 +492,18 @@ def _sync_first_commit_timestamps(
     project_path: str,
     cooldown_seconds: float,
     per_page: int,
+    lookback_days: int,
 ) -> int:
     updated = 0
+    lookback_start = _lookback_from(lookback_days)
     merge_requests = db.execute(
         select(MergeRequest).where(
             MergeRequest.repository_id == repository.id,
-            MergeRequest.first_commit_at.is_(None),
+            or_(
+                MergeRequest.first_commit_at.is_(None),
+                MergeRequest.updated_at >= lookback_start,
+                MergeRequest.merged_at >= lookback_start,
+            ),
         )
     ).scalars()
     for merge_request in merge_requests:
@@ -515,6 +546,10 @@ def _map_merge_requests_to_customer_releases(
     ).scalars()
 
     for merge_request in merge_requests:
+        merge_request.first_customer_tag = None
+        merge_request.first_customer_tag_date = None
+        merge_request.release_wait_time_hours = None
+        merge_request.lead_time_hours = None
         if not merge_request.effective_commit_sha:
             merge_request.lead_time_match_status = "no_effective_commit_sha"
             continue
@@ -592,6 +627,7 @@ def collect_gitlab_tags_and_releases(
             for project_path in project_paths:
                 project = gitlab.get_project(project_path)
                 repository = _upsert_repository(db, project_path, project)
+                seen_release_tags: set[str] = set()
                 for tag in gitlab.list_tags(project_path=project_path, per_page=per_page):
                     tag_name = tag.get("name")
                     raw_commit = tag.get("commit")
@@ -600,6 +636,7 @@ def collect_gitlab_tags_and_releases(
                     committed_at = _parse_dt(commit.get("committed_date"))
                     if not isinstance(tag_name, str) or not commit_sha or committed_at is None:
                         continue
+                    seen_release_tags.add(tag_name)
                     _upsert_release(
                         db,
                         repository_id=repository.id,
@@ -609,6 +646,11 @@ def collect_gitlab_tags_and_releases(
                         committed_at=committed_at,
                     )
                     processed += 1
+                processed += _reconcile_repository_releases(
+                    db,
+                    repository_id=repository.id,
+                    seen_tag_names=seen_release_tags,
+                )
 
                 merge_requests: list[dict[str, Any]] = []
                 for target_branch in target_branches:
@@ -632,6 +674,7 @@ def collect_gitlab_tags_and_releases(
                     project_path=project_path,
                     cooldown_seconds=mr_mapping_cooldown_seconds,
                     per_page=per_page,
+                    lookback_days=config.backend.lookback_days,
                 )
                 processed += _map_merge_requests_to_customer_releases(
                     db,

@@ -222,6 +222,8 @@ def calculate_mttr_alpha_minutes(
         session.execute(
             select(ProductionBug.mttr_alpha_minutes).where(
                 ProductionBug.healthy.is_(True),
+                ProductionBug.jira_created_at_valid.is_(True),
+                ProductionBug.created_at.isnot(None),
                 ProductionBug.first_fix_release_date.is_not(None),
                 ProductionBug.first_fix_release_date >= start_dt,
                 ProductionBug.first_fix_release_date < end_dt,

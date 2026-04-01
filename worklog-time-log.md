@@ -50,6 +50,51 @@ Record only actual active work time.
 | DEVOPS-451 | validation | 2026-04-01 14:34 | 2026-04-01 14:35 | 1m | pytest story7/story9 (11 passed) |
 | DEVOPS-451 | jira-update | 2026-04-01 14:36 | 2026-04-01 14:38 | 2m | Committed/pushed DEVOPS-451; prepared Jira solution, worklog, and Done transition |
 | DEVOPS-451 | jira-update | 2026-04-01 14:39 | 2026-04-01 14:40 | 1m | Jira Close transition required transition-level worklog entry |
+| DEVOPS-452 | implementation | 2026-04-01 10:36 | 2026-04-01 10:38 | 2m | Reviewed linked Jira items and performed production ETL risk analysis; documented findings in DEVOPS-452-findings.md |
+| DEVOPS-452 | jira-update | 2026-04-01 10:38 | 2026-04-01 10:48 | 10m | Created Bug Subtasks DEVOPS-453..DEVOPS-457 from highest-risk findings and linked them under DEVOPS-452 |
+| DEVOPS-452 | jira-update | 2026-04-01 10:48 | 2026-04-01 10:52 | 4m | Created second batch of Bug Subtasks DEVOPS-458..DEVOPS-462 for remaining Medium findings |
+| DEVOPS-452 | jira-update | 2026-04-01 10:52 | 2026-04-01 10:57 | 5m | Manual coordination and review work performed by assignee; requested to include in Jira worklog |
+| DEVOPS-452 | jira-update | 2026-04-01 11:01 | 2026-04-01 11:02 | 1m | Updated solution summary, added Jira worklog (21m total requested), transitioned Resolve Issue -> Done |
+| DEVOPS-453 | planning | 2026-04-01 11:16 | 2026-04-01 11:17 | 1m | Reviewed bug subtask scope, refined implementation plan, set estimate, and prepared workflow progression |
+| DEVOPS-453 | implementation | 2026-04-01 11:17 | 2026-04-01 11:18 | 1m | Cleared stale MR mapping fields on remap iteration and added regression test for stale-to-unmatched rerun |
+| DEVOPS-453 | validation | 2026-04-01 11:18 | 2026-04-01 11:18 | 1m | Ran targeted backend unit tests for gitlab collector and story7 derivations (19 passed) |
+| DEVOPS-453 | jira-update | 2026-04-01 11:19 | 2026-04-01 11:20 | 1m | Updated solution field, logged work (4m + transition-required 1m), and transitioned Development -> Done |
+| DEVOPS-454 | planning | 2026-04-01 11:20 | 2026-04-01 11:20 | 1m | Reviewed subtask scope, set 30m estimate, documented implementation plan, and moved issue through refinement flow |
+| DEVOPS-454 | implementation | 2026-04-01 11:20 | 2026-04-01 11:21 | 1m | Changed nightly sync to skip snapshot generation on partial collector success and added explicit skip log |
+| DEVOPS-454 | validation | 2026-04-01 11:21 | 2026-04-01 11:21 | 1m | Updated and ran scheduler/sync pipeline tests with partial-failure snapshot assertion (9 passed) |
+| DEVOPS-454 | jira-update | 2026-04-01 11:22 | 2026-04-01 11:22 | 1m | Updated solution field, logged work (4m + transition-required 1m), and transitioned Development -> Done |
+| DEVOPS-455 | planning | 2026-04-01 11:22 | 2026-04-01 11:23 | 1m | Reviewed timezone-boundary scope, set estimate, documented plan, and moved issue through refinement workflow |
+| DEVOPS-455 | implementation | 2026-04-01 11:23 | 2026-04-01 11:24 | 1m | Switched collector lookback anchors to UTC date in GitLab and Jira services; added UTC-midnight tests |
+| DEVOPS-455 | validation | 2026-04-01 11:24 | 2026-04-01 11:24 | 1m | Ran collector + derivation unit tests after UTC lookback update (27 passed) |
+| DEVOPS-455 | jira-update | 2026-04-01 11:24 | 2026-04-01 11:24 | 1m | Updated solution field, logged work (4m + transition-required 1m), and transitioned Development -> Done |
+| DEVOPS-456 | planning | 2026-04-01 11:28 | 2026-04-01 11:29 | 1m | Reviewed subtask scope, set 30m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-456 | implementation | 2026-04-01 11:29 | 2026-04-01 11:31 | 2m | Updated nightly sync to load runtime config with DB session and added regression test for DB-backed config loading |
+| DEVOPS-456 | validation | 2026-04-01 11:31 | 2026-04-01 11:32 | 1m | Ran scheduler/sync and config unit tests after DB-backed runtime config change (7 passed) |
+| DEVOPS-456 | jira-update | 2026-04-01 11:32 | 2026-04-01 11:33 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-457 | planning | 2026-04-01 11:33 | 2026-04-01 11:33 | 1m | Reviewed updated-aware sync scope, set 30m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-457 | implementation | 2026-04-01 11:33 | 2026-04-01 11:34 | 1m | Switched Jira bug JQL from created-based to updated-based incremental filter and added regression test for JQL generation |
+| DEVOPS-457 | validation | 2026-04-01 11:34 | 2026-04-01 11:34 | 1m | Ran Jira bug collector unit tests after incremental-sync update (8 passed) |
+| DEVOPS-457 | jira-update | 2026-04-01 11:34 | 2026-04-01 11:35 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-458 | planning | 2026-04-01 11:37 | 2026-04-01 11:37 | 1m | Reviewed snapshot ID-collision scope, set 30m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-458 | implementation | 2026-04-01 11:37 | 2026-04-01 11:38 | 1m | Removed manual snapshot max(id)+1 assignment and switched to DB-managed IDs; added SQLite-compatible PK autoincrement variant |
+| DEVOPS-458 | validation | 2026-04-01 11:38 | 2026-04-01 11:38 | 1m | Ran snapshot + scheduler unit tests after ID generation changes (9 passed) |
+| DEVOPS-458 | jira-update | 2026-04-01 11:38 | 2026-04-01 11:39 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-459 | planning | 2026-04-01 11:43 | 2026-04-01 11:43 | 1m | Reviewed deletion-reconciliation scope, set 45m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-459 | implementation | 2026-04-01 11:43 | 2026-04-01 11:44 | 1m | Added release reconciliation in GitLab collector to remove upstream-missing tags and added regression test for stale-tag cleanup |
+| DEVOPS-459 | validation | 2026-04-01 11:44 | 2026-04-01 11:44 | 1m | Ran GitLab collector and scheduler unit tests after reconciliation update (19 passed) |
+| DEVOPS-459 | jira-update | 2026-04-01 11:44 | 2026-04-01 11:45 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-460 | planning | 2026-04-01 11:51 | 2026-04-01 11:51 | 1m | Reviewed MR pagination performance scope, set 30m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-460 | implementation | 2026-04-01 11:51 | 2026-04-01 11:52 | 1m | Added server-side updated_after bound to merged MR API call and added regression test for bounded params plus merged_at safety filter |
+| DEVOPS-460 | validation | 2026-04-01 11:52 | 2026-04-01 11:52 | 1m | Ran GitLab collector tests after pagination optimization update (16 passed) |
+| DEVOPS-460 | jira-update | 2026-04-01 11:52 | 2026-04-01 11:53 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-461 | planning | 2026-04-01 12:17 | 2026-04-01 12:17 | 1m | Reviewed coherent bug_release rebuild scope, set 30m estimate, documented plan, and moved issue through refinement flow |
+| DEVOPS-461 | implementation | 2026-04-01 12:17 | 2026-04-01 12:18 | 1m | Gated bug_release mapping to run only when both collectors succeed and added partial-failure test assertion for skipped links |
+| DEVOPS-461 | validation | 2026-04-01 12:18 | 2026-04-01 12:18 | 1m | Ran scheduler/sync pipeline tests after coherent rebuild gating update (4 passed) |
+| DEVOPS-461 | jira-update | 2026-04-01 12:18 | 2026-04-01 12:19 | 1m | Updating Jira solution/worklog/resolution and transitioning Development -> Done with transition-required log-work |
+| DEVOPS-462 | implementation | 2026-04-01 17:15 | 2026-04-01 17:22 | 7m | jira_created_at_valid + nullable created_at migration, upsert without synthetic now, MTTR Alpha guards, unit tests |
+| DEVOPS-464 | implementation | 2026-04-01 17:22 | 2026-04-01 17:28 | 6m | first_commit_at revalidation for MRs in UTC lookback (updated_at/merged_at); regression test |
+| DEVOPS-465 | implementation | 2026-04-01 17:28 | 2026-04-01 17:34 | 6m | Jira search expand=changelog with truncated-embedded fallback; changelog helper unit tests |
+| DEVOPS-462 | jira-update | 2026-04-01 17:34 | 2026-04-01 17:42 | 8m | Jira workflow for 462/464/465 (components on 464/465), solution + timetracking, worklogs, Close issue with transition worklog |
 
 ## Active session template
 

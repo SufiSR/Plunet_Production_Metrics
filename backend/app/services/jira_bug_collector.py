@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -15,6 +16,8 @@ from app.config_schema import ConfigurationSchema
 from app.models.issue_worklog import IssueWorklog
 from app.models.production_bug import ProductionBug
 from app.models.sync_log import SyncLog
+
+logger = logging.getLogger(__name__)
 
 _SEMVER_RE = re.compile(r"^[vV]?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)")
 
@@ -43,7 +46,7 @@ def _parse_dt(value: str | None) -> datetime | None:
 
 
 def _lookback_from(days: int) -> datetime:
-    lookback_date = date.today() - timedelta(days=days)
+    lookback_date = datetime.now(timezone.utc).date() - timedelta(days=days)
     return datetime(
         lookback_date.year,
         lookback_date.month,
@@ -223,6 +226,25 @@ def evaluate_issue_health(
     return result
 
 
+def issue_changelog_histories_from_search_issue(
+    issue: dict[str, Any],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Return (histories, needs_full_changelog_fetch).
+
+    If the embedded changelog is truncated (``total`` > len(histories)), the second value is True.
+    """
+    changelog = issue.get("changelog")
+    if not isinstance(changelog, dict):
+        return [], True
+    raw_histories = changelog.get("histories")
+    if not isinstance(raw_histories, list):
+        return [], True
+    histories = [h for h in raw_histories if isinstance(h, dict)]
+    total = int(changelog.get("total") or len(histories))
+    incomplete = total > len(histories)
+    return histories, incomplete
+
+
 def first_ready_for_qa_at(changelog_items: list[dict[str, Any]], ready_status_names: list[str]) -> datetime | None:
     allowed = {name.strip().lower() for name in ready_status_names if name.strip()}
     if not allowed:
@@ -304,7 +326,14 @@ class JiraBugsClient:
             raise RuntimeError(f"Jira API request failed: {exc.response.status_code} {url}") from exc
         return response.json()
 
-    def search_bugs(self, *, jql: str, fields: list[str], max_results: int = 100) -> list[dict[str, Any]]:
+    def search_bugs(
+        self,
+        *,
+        jql: str,
+        fields: list[str],
+        max_results: int = 100,
+        expand: str | None = None,
+    ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
         next_page_token: str | None = None
         while True:
@@ -313,6 +342,8 @@ class JiraBugsClient:
                 "fields": ",".join(fields),
                 "maxResults": max_results,
             }
+            if expand:
+                params["expand"] = expand
             if next_page_token:
                 params["nextPageToken"] = next_page_token
             payload = self._get_json(f"{self.api_root}/search/jql", params=params)
@@ -371,7 +402,7 @@ class JiraBugsClient:
 def _build_bug_jql(lookback_from: datetime, excluded_projects: list[str]) -> str:
     jql = (
         'issuetype in ("Bug","Bug Subtask") '
-        f'AND created >= "{lookback_from.strftime("%Y-%m-%d")}"'
+        f'AND updated >= "{lookback_from.strftime("%Y-%m-%d")}"'
     )
     projects = [project.strip() for project in excluded_projects if project.strip()]
     if projects:
@@ -410,12 +441,26 @@ def _upsert_production_bug(
 
     customer_names = _to_string_list(fields.get("customfield_10123"))
     created_at = _parse_dt(str(fields.get("created") or ""))
-    if created_at is None:
-        created_at = datetime.now(timezone.utc)  # noqa: UP017
     closed_at = _parse_dt(str(fields.get("resolutiondate") or ""))
-    mttr_minutes = None
-    if closed_at is not None and closed_at >= created_at:
-        mttr_minutes = int((closed_at - created_at).total_seconds() // 60)
+    if created_at is None:
+        logger.warning(
+            "Jira issue %s has missing or unparseable created; excluding from creation-time metrics",
+            issue_key,
+        )
+        bug.jira_created_at_valid = False
+        bug.created_at = None
+        mttr_minutes = None
+        invalid_created_msg = "invalid or missing Jira created timestamp"
+        bug.healthmemo = (
+            f"{invalid_created_msg}; {health.healthmemo}" if health.healthmemo else invalid_created_msg
+        )
+    else:
+        bug.jira_created_at_valid = True
+        bug.created_at = created_at
+        mttr_minutes = None
+        if closed_at is not None and closed_at >= created_at:
+            mttr_minutes = int((closed_at - created_at).total_seconds() // 60)
+        bug.healthmemo = health.healthmemo
 
     bug.summary = str(fields.get("summary") or "").strip() or None
     bug.issue_type = issue_type
@@ -429,8 +474,6 @@ def _upsert_production_bug(
     bug.indicator_cf10114 = str(fields.get("customfield_10114") or "").strip() or None
     bug.indicator_cf10123 = ", ".join(customer_names) if customer_names else None
     bug.healthy = health.healthy
-    bug.healthmemo = health.healthmemo
-    bug.created_at = created_at
     bug.updated_at = _parse_dt(str(fields.get("updated") or ""))
     bug.closed_at = closed_at
     bug.mttr_minutes = mttr_minutes
@@ -489,7 +532,12 @@ def collect_jira_production_bugs(
 
     try:
         with JiraBugsClient(base_url=config.jira.base_url, token=jira_token) as jira:
-            issues = jira.search_bugs(jql=jql, fields=fields, max_results=per_page)
+            issues = jira.search_bugs(
+                jql=jql,
+                fields=fields,
+                max_results=per_page,
+                expand="changelog",
+            )
             for issue in issues:
                 issue_key = str(issue.get("key") or "").strip()
                 issue_fields = issue.get("fields")
@@ -560,7 +608,9 @@ def collect_jira_production_bugs(
                     parent_customer_names=parent_customer_names,
                 )
 
-                changelog_items = jira.list_issue_changelog(issue_key, max_results=per_page)
+                changelog_items, changelog_incomplete = issue_changelog_histories_from_search_issue(issue)
+                if changelog_incomplete:
+                    changelog_items = jira.list_issue_changelog(issue_key, max_results=per_page)
                 ready_for_qa_at = first_ready_for_qa_at(changelog_items, ready_status_names)
                 parsed_worklogs = [
                     parsed

@@ -168,7 +168,12 @@ def _resolve_mttr_alpha_fix_releases(db: Session, config: ConfigurationSchema) -
         bug.first_fix_release_tag = fix_release_tag
         bug.first_fix_release_date = fix_release_date
         bug.mttr_alpha_resolution_path = resolution_path
-        if fix_release_date is not None and bug.created_at <= fix_release_date:
+        if (
+            fix_release_date is not None
+            and bug.jira_created_at_valid
+            and bug.created_at is not None
+            and bug.created_at <= fix_release_date
+        ):
             bug.mttr_alpha_minutes = int((fix_release_date - bug.created_at).total_seconds() // 60)
         else:
             bug.mttr_alpha_minutes = None
@@ -220,7 +225,8 @@ def run_nightly_sync(
     config: ConfigurationSchema | None = None,
     session_factory: Callable[[], Session] = SessionLocal,
 ) -> dict[str, str | int]:
-    runtime_config = load_runtime_config()
+    with session_factory() as config_db:
+        runtime_config = load_runtime_config(db=config_db)
     effective_config = config or runtime_config.settings
     gitlab_token = runtime_config.gitlab_token
     jira_token = runtime_config.jira_token
@@ -261,8 +267,10 @@ def run_nightly_sync(
             errors.append(f"jira: {exc}")
             logger.exception("nightly_sync jira collector failed")
 
-        if gitlab_ok or jira_ok:
+        if gitlab_ok and jira_ok:
             records_processed += _run_with_session(session_factory, _map_bugs_to_releases)
+        elif gitlab_ok or jira_ok:
+            logger.info("nightly_sync skipped bug_release mapping due to partial failure")
 
         if gitlab_ok and jira_ok:
             records_processed += _run_with_session(
@@ -273,10 +281,12 @@ def run_nightly_sync(
         else:
             logger.info("nightly_sync skipped mttr_alpha and lead_post_production due to partial failure")
 
-        if gitlab_ok or jira_ok:
+        if gitlab_ok and jira_ok:
             records_processed += _run_with_session(
                 session_factory, lambda db: _generate_snapshots(db, effective_config)
             )
+        elif gitlab_ok or jira_ok:
+            logger.info("nightly_sync skipped snapshots due to partial failure")
 
         if gitlab_ok and jira_ok:
             status = "success"
