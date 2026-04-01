@@ -44,6 +44,10 @@ Record only actual active work time.
 | DEVOPS-438 | jira-update | 2026-03-31 17:04 | 2026-03-31 17:04 | 1m | Jira close transition required explicit transition-level log-work payload |
 | DEVOPS-439 | implementation | 2026-04-01 09:42 | 2026-04-01 09:45 | 3m | Implemented metric calculation and snapshot services, integrated nightly snapshot generation, and validated with targeted backend unit tests |
 | DEVOPS-439 | jira-update | 2026-04-01 09:52 | 2026-04-01 09:53 | 1m | Posted DEVOPS-439 implementation progress comment on Jira |
+| DEVOPS-439 | jira-update | 2026-04-01 10:05 | 2026-04-01 10:05 | 1m | Post-implementation closure updates: set Solution field, added final worklog, and transitioned issue to Done |
+| DEVOPS-451 | planning | 2026-04-01 10:16 | 2026-04-01 10:18 | 2m | Reviewed scope, prepared implementation plan, got approval, and recorded plan + estimate in Jira |
+| DEVOPS-451 | implementation | 2026-04-01 14:28 | 2026-04-01 14:34 | 6m | merge_request inserted_at→updated_at, initial schema + rename migration for existing DBs, database-schema doc, unit test |
+| DEVOPS-451 | validation | 2026-04-01 14:34 | 2026-04-01 14:35 | 1m | pytest story7/story9 (11 passed) |
 
 ## Active session template
 

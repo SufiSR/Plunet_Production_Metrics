@@ -149,6 +149,24 @@ def test_refresh_snapshots_writes_rows_for_all_period_types() -> None:
     assert {"WEEK", "MONTH", "QUARTER"}.issubset(types)
 
 
+def test_merge_request_uses_updated_at_for_local_row_lifecycle() -> None:
+    with _session() as db:
+        db.add(Repository(id=1, gitlab_id=101, name="repo", path="ops/repo", default_branch="main", active=True))
+        mr = MergeRequest(
+            id=200,
+            repository_id=1,
+            gitlab_mr_id=99,
+            target_branch="main",
+            created_at=_utc(2026, 4, 1),  # GitLab event timestamp
+            merged_at=_utc(2026, 4, 2),
+        )
+        db.add(mr)
+        db.commit()
+        db.refresh(mr)
+
+    assert mr.updated_at is not None
+
+
 def test_classify_performance_level_uses_worst_metric() -> None:
     level = classify_performance_level(
         deployment_freq_per_week=10.0,

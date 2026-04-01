@@ -57,6 +57,6 @@ class MergeRequest(Base):
     lead_time_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     lead_post_production_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     lead_time_match_status: Mapped[str | None] = mapped_column(String(50))
-    inserted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

@@ -99,7 +99,7 @@ def upgrade() -> None:
         sa.Column("lead_time_hours", sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column("lead_post_production_hours", sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column("lead_time_match_status", sa.String(length=50), nullable=True),
-        sa.Column("inserted_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(
             ["repository_id"],
             ["repository.id"],

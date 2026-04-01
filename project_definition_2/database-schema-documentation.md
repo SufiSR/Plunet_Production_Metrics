@@ -17,7 +17,7 @@ Alembic env is configured with a sync engine.
 
 - **Raw tables** (`release`, `merge_request`, `production_bug`, …) are populated by collectors during **`run_nightly_sync`** (default once per day). Rows are **upserted** by natural keys (e.g. `jira_key`, `gitlab_mr_id`, `repository_id` + `tag_name`).
 - **Derived fields** on `merge_request` (lead time, release wait, `first_commit_at`) and on `production_bug` (**`mttr_alpha_*`**) are recomputed in the same run after both GitLab and Jira steps complete (where applicable).
-- **`metric_snapshot`** holds pre-aggregated KPIs per period. The snapshot step **runs after** raw + derived updates. Rows for the **current** incomplete period are **overwritten** on each successful run so the API always serves numbers consistent with the latest sync.
+- **`metric_snapshot`** holds pre-aggregated KPIs per period. The snapshot step **runs after** raw + derived updates. Rows for the **current** incomplete period are **overwritten** on each successful run so the API always serves numbers consistent with the latest sync. API `generated_at` is sourced from `metric_snapshot.created_at`.
 - **Retention**: configurable pruning of old raw rows (see `configuration.yml`); snapshots may be kept indefinitely (low volume).
 
 ---
@@ -225,7 +225,7 @@ class MergeRequest(Base):
     lead_time_hours: Mapped[float | None] = mapped_column(Numeric(10, 2))            # first_commit_at → first_customer_tag_date
     lead_post_production_hours: Mapped[float | None] = mapped_column(Numeric(10, 2))  # merged_at − linked bug.ready_for_qa_at
     lead_time_match_status: Mapped[str | None] = mapped_column(String(50))  # matched | no_customer_tag_ref_found | ...
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 ```
 
 ### `ProductionBug`
@@ -307,6 +307,8 @@ class MetricSnapshot(Base):
     lead_post_production_median_minutes: Mapped[int | None] = None  # median ready_for_qa → merge (MR subset with data)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 ```
+
+`created_at` on `metric_snapshot` is the canonical persistence field behind API freshness timestamps (`generated_at`).
 
 ### `AppConfiguration` (runtime settings managed by Admin UI)
 
