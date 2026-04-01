@@ -215,11 +215,11 @@ def test_compute_lead_post_production_handles_valid_and_invalid_intervals() -> N
         )
         db.commit()
 
-        processed = _compute_lead_post_production(db)
+        processed = _compute_lead_post_production(db, lookback_days=730)
         mr_ok = db.get(MergeRequest, 71)
         mr_invalid = db.get(MergeRequest, 72)
 
-    assert processed == 2
+    assert processed == 1
     assert mr_ok is not None
     assert float(mr_ok.lead_post_production_hours) == 6.5
     assert mr_invalid is not None
@@ -308,7 +308,7 @@ def test_compute_lead_post_production_clears_stale_value_when_jira_key_missing()
         db.add(stale)
         db.commit()
 
-        _compute_lead_post_production(db)
+        _compute_lead_post_production(db, lookback_days=730)
         refreshed = db.get(MergeRequest, 91)
 
     assert refreshed is not None

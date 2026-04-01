@@ -19,6 +19,7 @@ from app.services.gitlab_release_collector import (
     _lookback_from,
     _map_merge_requests_to_customer_releases,
     _markers_regex,
+    _parse_dt,
     _parse_merge_request,
     _reconcile_repository_releases,
     _sync_first_commit_timestamps,
@@ -33,6 +34,13 @@ def test_parse_tag_version_semver_with_prerelease() -> None:
     assert parsed.minor == 2
     assert parsed.patch == 3
     assert parsed.pre_release == "rc.1"
+
+
+def test_parse_dt_converts_offset_aware_to_utc() -> None:
+    parsed = _parse_dt("2026-04-01T12:00:00+02:00")
+    assert parsed is not None
+    assert parsed.tzinfo == timezone.utc
+    assert parsed.hour == 10
 
 
 def test_parse_tag_version_non_semver_returns_none_fields() -> None:
@@ -379,10 +387,11 @@ def test_map_merge_requests_clears_stale_fields_when_refs_disappear() -> None:
     assert second_mapped == 0
     assert mr_after_second is not None
     assert mr_after_second.lead_time_match_status == "no_tag_ref_found"
-    assert mr_after_second.first_customer_tag is None
-    assert mr_after_second.first_customer_tag_date is None
-    assert mr_after_second.release_wait_time_hours is None
-    assert mr_after_second.lead_time_hours is None
+    # Empty ref response does not wipe last-known-good mapping (avoid silent metric loss on flaky API).
+    assert mr_after_second.first_customer_tag == "v10.1.0"
+    assert mr_after_second.first_customer_tag_date is not None
+    assert mr_after_second.release_wait_time_hours is not None
+    assert mr_after_second.lead_time_hours is not None
 
 
 def test_reconcile_repository_releases_removes_tags_missing_upstream() -> None:

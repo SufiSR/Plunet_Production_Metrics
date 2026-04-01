@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session
 from app.config_schema import ConfigurationSchema
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.repository import Repository
-from app.services.metric_service import PERIOD_TYPES, calculate_period_metrics
+from app.services.metric_service import (
+    PERIOD_TYPES,
+    calculate_mttr_alpha_minutes,
+    calculate_period_metrics,
+    period_metric_bounds,
+)
 
 
 @dataclass(frozen=True)
@@ -38,14 +43,25 @@ def refresh_snapshots(
     for period_type in PERIOD_TYPES:
         windows.extend(_build_period_windows(period_type=period_type, start_date=start_date, end_date=end_date))
 
+    mttr_by_window: dict[tuple[date, date], int | None] = {}
+    for window in windows:
+        wk = (window.period_start, window.period_end)
+        if wk not in mttr_by_window:
+            start_dt, end_dt = period_metric_bounds(window.period_start, window.period_end)
+            mttr_by_window[wk] = calculate_mttr_alpha_minutes(
+                session, start_dt=start_dt, end_dt=end_dt
+            )
+
     written = 0
     for repository_id in repositories:
         for window in windows:
+            wk = (window.period_start, window.period_end)
             values = calculate_period_metrics(
                 session,
                 period_start=window.period_start,
                 period_end=window.period_end,
                 repository_id=repository_id,
+                mttr_alpha_minutes_override=mttr_by_window[wk],
             )
             session.execute(
                 delete(MetricSnapshot).where(

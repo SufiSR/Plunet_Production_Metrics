@@ -71,22 +71,20 @@ def _apply_env_overrides(config: ConfigurationSchema) -> ConfigurationSchema:
 
     if _env_text("DORA_BACKEND_HOST"):
         config.backend.host = _env_text("DORA_BACKEND_HOST") or config.backend.host
-    if _env_int("DORA_BACKEND_PORT") is not None:
-        config.backend.port = _env_int("DORA_BACKEND_PORT") or config.backend.port
+    _port = _env_int("DORA_BACKEND_PORT")
+    if _port is not None:
+        config.backend.port = _port
     if _env_text("DORA_BACKEND_LOG_LEVEL"):
         config.backend.log_level = _env_text("DORA_BACKEND_LOG_LEVEL") or config.backend.log_level
-    if _env_int("DORA_SYNC_CRON_HOUR") is not None:
-        config.backend.sync_cron_hour = (
-            _env_int("DORA_SYNC_CRON_HOUR") or config.backend.sync_cron_hour
-        )
-    if _env_int("DORA_SYNC_CRON_MINUTE") is not None:
-        config.backend.sync_cron_minute = (
-            _env_int("DORA_SYNC_CRON_MINUTE") or config.backend.sync_cron_minute
-        )
-    if _env_int("DORA_LOOKBACK_DAYS") is not None:
-        config.backend.lookback_days = (
-            _env_int("DORA_LOOKBACK_DAYS") or config.backend.lookback_days
-        )
+    _cron_hour = _env_int("DORA_SYNC_CRON_HOUR")
+    if _cron_hour is not None:
+        config.backend.sync_cron_hour = _cron_hour
+    _cron_minute = _env_int("DORA_SYNC_CRON_MINUTE")
+    if _cron_minute is not None:
+        config.backend.sync_cron_minute = _cron_minute
+    _lookback = _env_int("DORA_LOOKBACK_DAYS")
+    if _lookback is not None:
+        config.backend.lookback_days = _lookback
 
     if _env_text("GITLAB_BASE_URL"):
         config.gitlab.base_url = _env_text("GITLAB_BASE_URL") or config.gitlab.base_url

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config_schema import ConfigurationSchema
 from app.services.sync_pipeline import run_nightly_sync
 
-_scheduler: AsyncIOScheduler | None = None
+_scheduler: BackgroundScheduler | None = None
 
 
-def build_scheduler(config: ConfigurationSchema) -> AsyncIOScheduler:
-    scheduler = AsyncIOScheduler(timezone="UTC")
+def build_scheduler(config: ConfigurationSchema) -> BackgroundScheduler:
+    scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(
         run_nightly_sync,
         trigger=CronTrigger(
@@ -26,7 +26,7 @@ def build_scheduler(config: ConfigurationSchema) -> AsyncIOScheduler:
     return scheduler
 
 
-def start_scheduler(config: ConfigurationSchema) -> AsyncIOScheduler:
+def start_scheduler(config: ConfigurationSchema) -> BackgroundScheduler:
     global _scheduler
     if _scheduler is not None and _scheduler.running:
         return _scheduler
@@ -44,5 +44,5 @@ def stop_scheduler() -> None:
     _scheduler = None
 
 
-def get_scheduler() -> AsyncIOScheduler | None:
+def get_scheduler() -> BackgroundScheduler | None:
     return _scheduler

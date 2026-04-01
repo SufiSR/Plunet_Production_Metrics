@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from statistics import median
 
@@ -15,6 +15,8 @@ from app.models.release import Release
 
 PERIOD_TYPES = ("WEEK", "MONTH", "QUARTER")
 PERFORMANCE_LEVELS = ("LOW", "MEDIUM", "HIGH", "ELITE")
+
+_MTTR_COMPUTE_SENTINEL = object()
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,7 @@ def calculate_period_metrics(
     period_start: date,
     period_end: date,
     repository_id: int,
+    mttr_alpha_minutes_override: int | None | object = _MTTR_COMPUTE_SENTINEL,
 ) -> MetricValues:
     start_dt, end_dt = _period_datetimes(period_start, period_end)
     deployment_freq = calculate_deployment_frequency_per_week(
@@ -83,11 +86,14 @@ def calculate_period_metrics(
         end_dt=end_dt,
         repository_id=repository_id,
     )
-    mttr_alpha_minutes = calculate_mttr_alpha_minutes(
-        session,
-        start_dt=start_dt,
-        end_dt=end_dt,
-    )
+    if mttr_alpha_minutes_override is _MTTR_COMPUTE_SENTINEL:
+        mttr_alpha_minutes = calculate_mttr_alpha_minutes(
+            session,
+            start_dt=start_dt,
+            end_dt=end_dt,
+        )
+    else:
+        mttr_alpha_minutes = mttr_alpha_minutes_override  # type: ignore[assignment]
     lead_post_production_median_minutes = calculate_lead_post_production_minutes(
         session,
         start_dt=start_dt,
@@ -259,9 +265,15 @@ def calculate_lead_post_production_minutes(
 
 
 def _period_datetimes(period_start: date, period_end: date) -> tuple[datetime, datetime]:
+    """Return [start, end) UTC bounds for metric queries (exclusive end)."""
     start_dt = datetime.combine(period_start, time.min, tzinfo=timezone.utc)
-    end_dt = datetime.combine(period_end, time.max, tzinfo=timezone.utc)
-    return start_dt, end_dt + (datetime.resolution)
+    end_dt = datetime.combine(period_end + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    return start_dt, end_dt
+
+
+def period_metric_bounds(period_start: date, period_end: date) -> tuple[datetime, datetime]:
+    """Public alias for snapshot and other callers (same semantics as _period_datetimes)."""
+    return _period_datetimes(period_start, period_end)
 
 
 def _median_minutes_from_hours(values: list[Decimal | None]) -> int | None:

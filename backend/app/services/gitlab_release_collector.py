@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,8 @@ from app.models.merge_request import MergeRequest
 from app.models.release import Release
 from app.models.repository import Repository
 from app.models.sync_log import SyncLog
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_MARKERS = ["rc", "beta"]
 _DEFAULT_TARGET_BRANCHES = ["master", "9.x", "10.x", "11.x"]
@@ -63,7 +66,7 @@ def _parse_dt(value: str | None) -> datetime | None:
         return None
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)  # noqa: UP017
-    return parsed
+    return parsed.astimezone(timezone.utc)  # noqa: UP017
 
 
 def _hours_between(start: datetime, end: datetime) -> Decimal:
@@ -416,6 +419,16 @@ def _reconcile_repository_releases(
         existing_tags = set(
             db.execute(select(Release.tag_name).where(Release.repository_id == repository_id)).scalars().all()
         )
+        if len(existing_tags) > 10 and len(seen_tag_names) < len(existing_tags) // 2:
+            logger.warning(
+                "skipping release reconciliation: tag fetch set much smaller than DB (possible incomplete API page)",
+                extra={
+                    "repository_id": repository_id,
+                    "seen_count": len(seen_tag_names),
+                    "existing_count": len(existing_tags),
+                },
+            )
+            return 0
         stale_tags = existing_tags - seen_tag_names
         if not stale_tags:
             return 0
@@ -464,6 +477,7 @@ def _upsert_merge_request(
         )
         return
 
+    prev_jira = merge_request.jira_key
     merge_request.title = payload["title"]
     merge_request.description = payload["description"]
     merge_request.author = payload["author"]
@@ -477,6 +491,8 @@ def _upsert_merge_request(
     merge_request.effective_commit_sha = payload["effective_commit_sha"]
     merge_request.jira_key = payload["jira_key"]
     merge_request.jira_key_source = payload["jira_key_source"]
+    if prev_jira != payload["jira_key"]:
+        merge_request.jira_ready_for_qa_at = None
 
 
 def _apply_cooldown(seconds: float) -> None:
@@ -545,21 +561,23 @@ def _map_merge_requests_to_customer_releases(
         select(MergeRequest).where(MergeRequest.repository_id == repository.id)
     ).scalars()
 
+    ref_cache: dict[str, list[dict[str, Any]]] = {}
+
     for merge_request in merge_requests:
-        merge_request.first_customer_tag = None
-        merge_request.first_customer_tag_date = None
-        merge_request.release_wait_time_hours = None
-        merge_request.lead_time_hours = None
         if not merge_request.effective_commit_sha:
             merge_request.lead_time_match_status = "no_effective_commit_sha"
             continue
 
-        refs = gitlab.list_commit_tag_refs(
-            project_path,
-            commit_sha=merge_request.effective_commit_sha,
-            per_page=per_page,
-        )
-        _apply_cooldown(cooldown_seconds)
+        sha = merge_request.effective_commit_sha
+        refs = ref_cache.get(sha)
+        if refs is None:
+            refs = gitlab.list_commit_tag_refs(
+                project_path,
+                commit_sha=sha,
+                per_page=per_page,
+            )
+            ref_cache[sha] = refs
+            _apply_cooldown(cooldown_seconds)
         if not refs:
             merge_request.lead_time_match_status = "no_tag_ref_found"
             continue
@@ -692,9 +710,15 @@ def collect_gitlab_tags_and_releases(
         return processed
     except Exception as exc:
         db.rollback()
-        sync_log.status = "failed"
-        sync_log.finished_at = datetime.now(timezone.utc)  # noqa: UP017
-        sync_log.error_message = str(exc)[:4000]
-        db.add(sync_log)
+        finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        db.add(
+            SyncLog(
+                source="gitlab",
+                started_at=started_at,
+                finished_at=finished_at,
+                status="failed",
+                error_message=str(exc)[:4000],
+            )
+        )
         db.commit()
         raise

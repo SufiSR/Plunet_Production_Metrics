@@ -51,7 +51,14 @@ def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(m
         lambda _db, _config: order.append("mttr_alpha") or 13,
     )
     monkeypatch.setattr(
-        sync_pipeline, "_compute_lead_post_production", lambda _db: order.append("lead_post_prod") or 14
+        sync_pipeline,
+        "hydrate_merge_request_jira_ready_for_qa",
+        lambda *_a, **_k: order.append("hydrate_rfq") or 0,
+    )
+    monkeypatch.setattr(
+        sync_pipeline,
+        "_compute_lead_post_production",
+        lambda _db, **_: order.append("lead_post_prod") or 14,
     )
     monkeypatch.setattr(
         sync_pipeline, "_generate_snapshots", lambda _db, _config: order.append("snapshots") or 15
@@ -59,10 +66,12 @@ def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(m
 
     payload = sync_pipeline.run_nightly_sync(config=ConfigurationSchema())
     assert payload["status"] == "success"
-    assert order == ["gitlab", "jira", "links", "mttr_alpha", "lead_post_prod", "snapshots"]
+    assert order == ["gitlab", "jira", "links", "mttr_alpha", "hydrate_rfq", "lead_post_prod", "snapshots"]
 
 
-def test_run_nightly_sync_partial_failure_skips_links_mttr_lead_post_and_snapshots(monkeypatch) -> None:
+def test_run_nightly_sync_partial_failure_skips_links_mttr_hydrate_lead_post_but_runs_snapshots(
+    monkeypatch,
+) -> None:
     order: list[str] = []
 
     monkeypatch.setattr(sync_pipeline, "load_runtime_config", _fake_load_runtime_config)
@@ -88,7 +97,14 @@ def test_run_nightly_sync_partial_failure_skips_links_mttr_lead_post_and_snapsho
         lambda _db, _config: order.append("mttr_alpha") or 99,
     )
     monkeypatch.setattr(
-        sync_pipeline, "_compute_lead_post_production", lambda _db: order.append("lead_post_prod") or 99
+        sync_pipeline,
+        "hydrate_merge_request_jira_ready_for_qa",
+        lambda *_a, **_k: order.append("hydrate_rfq") or 0,
+    )
+    monkeypatch.setattr(
+        sync_pipeline,
+        "_compute_lead_post_production",
+        lambda _db, **_: order.append("lead_post_prod") or 99,
     )
     monkeypatch.setattr(
         sync_pipeline, "_generate_snapshots", lambda _db, _config: order.append("snapshots") or 1
@@ -98,6 +114,7 @@ def test_run_nightly_sync_partial_failure_skips_links_mttr_lead_post_and_snapsho
     assert payload["status"] == "partial_failure"
     assert "links" not in order
     assert "mttr_alpha" not in order
+    assert "hydrate_rfq" not in order
     assert "lead_post_prod" not in order
-    assert "snapshots" not in order
-    assert order == ["gitlab", "jira"]
+    assert "snapshots" in order
+    assert order == ["gitlab", "jira", "snapshots"]

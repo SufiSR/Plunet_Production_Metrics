@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.config_schema import ConfigurationSchema
 from app.models.app_configuration import AppConfiguration
 from app.services import config_service
 
@@ -65,3 +66,15 @@ def test_runtime_tokens_resolve_env_then_db_encrypted(monkeypatch) -> None:
 
 def test_mask_secret_hint_masks_value() -> None:
     assert config_service.mask_secret_hint("glpat-1234567890") == "glpat****7890"
+
+
+def test_env_sync_cron_hour_zero_not_falsy_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("DORA_SYNC_CRON_HOUR", "0")
+    cfg = config_service._apply_env_overrides(ConfigurationSchema())
+    assert cfg.backend.sync_cron_hour == 0
+
+
+def test_env_backend_port_zero_not_falsy_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("DORA_BACKEND_PORT", "0")
+    cfg = config_service._apply_env_overrides(ConfigurationSchema())
+    assert cfg.backend.port == 0

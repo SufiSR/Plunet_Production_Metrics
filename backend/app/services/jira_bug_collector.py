@@ -8,12 +8,13 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.config_schema import ConfigurationSchema
 from app.models.issue_worklog import IssueWorklog
+from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.sync_log import SyncLog
 
@@ -497,6 +498,57 @@ def _replace_issue_worklogs(db: Session, *, bug_id: int, parsed_worklogs: list[d
         )
 
 
+def hydrate_merge_request_jira_ready_for_qa(
+    db: Session,
+    *,
+    config: ConfigurationSchema,
+    jira_token: str,
+    per_page: int = 100,
+) -> int:
+    """Fetch Ready-for-QA timestamps from Jira for MR-linked keys not covered by ProductionBug.
+
+    Production bugs already carry ``ready_for_qa_at`` from the bug sync. This step covers
+    feature / non-bug issues referenced only from GitLab MR titles/branches.
+    """
+    if not (jira_token or "").strip():
+        return 0
+    _, ready_status_names = _merged_jira_settings(config)
+    with_bug_ready = set(
+        db.execute(
+            select(ProductionBug.jira_key).where(
+                ProductionBug.jira_key.isnot(None),
+                ProductionBug.ready_for_qa_at.isnot(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    keys = sorted(
+        {
+            k
+            for k in db.execute(select(MergeRequest.jira_key).where(MergeRequest.jira_key.isnot(None)))
+            .scalars()
+            .all()
+            if k and k not in with_bug_ready
+        }
+    )
+    if not keys:
+        return 0
+    touched = 0
+    with JiraBugsClient(base_url=config.jira.base_url, token=jira_token) as jira:
+        for issue_key in keys:
+            changelog_items = jira.list_issue_changelog(issue_key, max_results=per_page)
+            rfq = first_ready_for_qa_at(changelog_items, ready_status_names)
+            result = db.execute(
+                update(MergeRequest)
+                .where(MergeRequest.jira_key == issue_key)
+                .values(jira_ready_for_qa_at=rfq)
+            )
+            touched += int(result.rowcount or 0)
+    db.commit()
+    return touched
+
+
 def collect_jira_production_bugs(
     db: Session,
     *,
@@ -640,9 +692,15 @@ def collect_jira_production_bugs(
         return processed
     except Exception as exc:
         db.rollback()
-        sync_log.status = "failed"
-        sync_log.finished_at = datetime.now(timezone.utc)  # noqa: UP017
-        sync_log.error_message = str(exc)[:4000]
-        db.add(sync_log)
+        finished_at = datetime.now(timezone.utc)  # noqa: UP017
+        db.add(
+            SyncLog(
+                source="jira",
+                started_at=started_at,
+                finished_at=finished_at,
+                status="failed",
+                error_message=str(exc)[:4000],
+            )
+        )
         db.commit()
         raise

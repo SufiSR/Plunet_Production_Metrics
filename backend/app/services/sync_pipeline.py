@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Callable
 
@@ -18,7 +18,10 @@ from app.models.release import Release
 from app.models.sync_log import SyncLog
 from app.services.config_service import load_runtime_config
 from app.services.gitlab_release_collector import collect_gitlab_tags_and_releases
-from app.services.jira_bug_collector import collect_jira_production_bugs
+from app.services.jira_bug_collector import (
+    collect_jira_production_bugs,
+    hydrate_merge_request_jira_ready_for_qa,
+)
 from app.services.snapshot_service import refresh_snapshots
 
 logger = logging.getLogger(__name__)
@@ -81,8 +84,17 @@ def _finish_nightly_sync_log(
     return _run_with_session(session_factory, _finish)
 
 
+def _lookback_start_utc(days: int) -> datetime:
+    lookback_date = datetime.now(timezone.utc).date() - timedelta(days=days)
+    return datetime(
+        lookback_date.year,
+        lookback_date.month,
+        lookback_date.day,
+        tzinfo=timezone.utc,
+    )
+
+
 def _map_bugs_to_releases(db: Session) -> int:
-    db.execute(delete(BugRelease))
     releases = db.execute(select(Release)).scalars().all()
     by_tag: dict[str, list[Release]] = {}
     for release in releases:
@@ -95,6 +107,7 @@ def _map_bugs_to_releases(db: Session) -> int:
 
     bugs = db.execute(select(ProductionBug)).scalars()
     for bug in bugs:
+        db.execute(delete(BugRelease).where(BugRelease.bug_id == bug.id))
         linked_release_ids: set[int] = set()
         affects_versions = [value for value in (bug.affects_versions or []) if value]
         for version in affects_versions:
@@ -120,19 +133,28 @@ def _map_bugs_to_releases(db: Session) -> int:
 
 def _resolve_mttr_alpha_fix_releases(db: Session, config: ConfigurationSchema) -> int:
     processed = 0
-    release_by_tag: dict[str, list[Release]] = {}
-    for release in db.execute(select(Release)).scalars():
-        if not release.tag_name:
+    release_by_tag: dict[str, list[tuple[datetime, str]]] = {}
+    for tag_name, committed_at in db.execute(select(Release.tag_name, Release.committed_at)).all():
+        if not tag_name or committed_at is None:
             continue
-        for key in _normalize_version_key(release.tag_name):
-            release_by_tag.setdefault(key, []).append(release)
-    mr_by_jira_key: dict[str, MergeRequest] = {}
-    for mr in db.execute(select(MergeRequest)).scalars():
-        if not mr.jira_key or mr.first_customer_tag_date is None:
+        for key in _normalize_version_key(tag_name):
+            release_by_tag.setdefault(key, []).append((committed_at, tag_name))
+    mr_by_jira_key: dict[str, tuple[datetime | None, str | None]] = {}
+    for jira_key, fct_date, fct_tag in db.execute(
+        select(
+            MergeRequest.jira_key,
+            MergeRequest.first_customer_tag_date,
+            MergeRequest.first_customer_tag,
+        ).where(
+            MergeRequest.jira_key.isnot(None),
+            MergeRequest.first_customer_tag_date.isnot(None),
+        )
+    ).all():
+        if not jira_key or fct_date is None:
             continue
-        current = mr_by_jira_key.get(mr.jira_key)
-        if current is None or mr.first_customer_tag_date < current.first_customer_tag_date:
-            mr_by_jira_key[mr.jira_key] = mr
+        current = mr_by_jira_key.get(jira_key)
+        if current is None or fct_date < current[0]:
+            mr_by_jira_key[jira_key] = (fct_date, fct_tag)
 
     eligible_priorities = {
         priority.strip().lower()
@@ -149,20 +171,19 @@ def _resolve_mttr_alpha_fix_releases(db: Session, config: ConfigurationSchema) -
         fix_release_tag = None
         fix_release_date = None
         resolution_path = None
-        merge_request = mr_by_jira_key.get(bug.jira_key)
-        if merge_request is not None:
-            fix_release_tag = merge_request.first_customer_tag
-            fix_release_date = merge_request.first_customer_tag_date
+        mr_match = mr_by_jira_key.get(bug.jira_key)
+        if mr_match is not None:
+            fix_release_date, fix_release_tag = mr_match[0], mr_match[1]
             resolution_path = "mr_jira_key"
         else:
             for version in bug.fix_versions or []:
-                candidate_releases: list[Release] = []
+                candidate_releases: list[tuple[datetime, str]] = []
                 for key in _normalize_version_key(version):
                     candidate_releases.extend(release_by_tag.get(key, []))
-                for release in candidate_releases:
-                    if fix_release_date is None or release.committed_at < fix_release_date:
-                        fix_release_tag = release.tag_name
-                        fix_release_date = release.committed_at
+                for committed_at, tag_name in candidate_releases:
+                    if fix_release_date is None or committed_at < fix_release_date:
+                        fix_release_tag = tag_name
+                        fix_release_date = committed_at
                         resolution_path = "fix_version"
 
         bug.first_fix_release_tag = fix_release_tag
@@ -183,21 +204,27 @@ def _resolve_mttr_alpha_fix_releases(db: Session, config: ConfigurationSchema) -
     return processed
 
 
-def _compute_lead_post_production(db: Session) -> int:
+def _compute_lead_post_production(db: Session, *, lookback_days: int) -> int:
     processed = 0
+    lookback_start = _lookback_start_utc(lookback_days)
     bug_by_jira_key = {
         bug.jira_key: bug for bug in db.execute(select(ProductionBug)).scalars() if bug.jira_key
     }
-    for merge_request in db.execute(select(MergeRequest)).scalars():
+    merge_requests = db.execute(
+        select(MergeRequest).where(MergeRequest.merged_at >= lookback_start)
+    ).scalars()
+    for merge_request in merge_requests:
         if not merge_request.jira_key:
             merge_request.lead_post_production_hours = None
             continue
         bug = bug_by_jira_key.get(merge_request.jira_key)
-        if bug is None or bug.ready_for_qa_at is None or merge_request.merged_at < bug.ready_for_qa_at:
+        ready_at = bug.ready_for_qa_at if bug is not None else None
+        if ready_at is None:
+            ready_at = merge_request.jira_ready_for_qa_at
+        if ready_at is None or merge_request.merged_at < ready_at:
             merge_request.lead_post_production_hours = None
-            processed += 1
             continue
-        hours = (merge_request.merged_at - bug.ready_for_qa_at).total_seconds() / 3600.0
+        hours = (merge_request.merged_at - ready_at).total_seconds() / 3600.0
         merge_request.lead_post_production_hours = Decimal(str(hours)).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
@@ -239,33 +266,43 @@ def run_nightly_sync(
     errors: list[str] = []
 
     try:
-        try:
-            records_processed += _run_with_session(
-                session_factory,
-                lambda db: collect_gitlab_tags_and_releases(
-                    db,
-                    config=effective_config,
-                    gitlab_token=gitlab_token,
-                ),
-            )
-            gitlab_ok = True
-        except Exception as exc:
-            errors.append(f"gitlab: {exc}")
-            logger.exception("nightly_sync gitlab collector failed")
+        if (gitlab_token or "").strip():
+            try:
+                records_processed += _run_with_session(
+                    session_factory,
+                    lambda db: collect_gitlab_tags_and_releases(
+                        db,
+                        config=effective_config,
+                        gitlab_token=gitlab_token,
+                    ),
+                )
+                gitlab_ok = True
+            except Exception as exc:
+                errors.append(f"gitlab: {exc}")
+                logger.exception("nightly_sync gitlab collector failed")
+        else:
+            msg = "GitLab API token is not configured (GITLAB_TOKEN / GITLAB_API_TOKEN)"
+            errors.append(f"gitlab: {msg}")
+            logger.error("nightly_sync skipped gitlab: %s", msg)
 
-        try:
-            records_processed += _run_with_session(
-                session_factory,
-                lambda db: collect_jira_production_bugs(
-                    db,
-                    config=effective_config,
-                    jira_token=jira_token,
-                ),
-            )
-            jira_ok = True
-        except Exception as exc:
-            errors.append(f"jira: {exc}")
-            logger.exception("nightly_sync jira collector failed")
+        if (jira_token or "").strip():
+            try:
+                records_processed += _run_with_session(
+                    session_factory,
+                    lambda db: collect_jira_production_bugs(
+                        db,
+                        config=effective_config,
+                        jira_token=jira_token,
+                    ),
+                )
+                jira_ok = True
+            except Exception as exc:
+                errors.append(f"jira: {exc}")
+                logger.exception("nightly_sync jira collector failed")
+        else:
+            msg = "Jira API token is not configured (JIRA_TOKEN / JIRA_API_TOKEN)"
+            errors.append(f"jira: {msg}")
+            logger.error("nightly_sync skipped jira: %s", msg)
 
         if gitlab_ok and jira_ok:
             records_processed += _run_with_session(session_factory, _map_bugs_to_releases)
@@ -277,16 +314,27 @@ def run_nightly_sync(
                 session_factory,
                 lambda db: _resolve_mttr_alpha_fix_releases(db, effective_config),
             )
-            records_processed += _run_with_session(session_factory, _compute_lead_post_production)
+            records_processed += _run_with_session(
+                session_factory,
+                lambda db: hydrate_merge_request_jira_ready_for_qa(
+                    db, config=effective_config, jira_token=jira_token
+                ),
+            )
+            records_processed += _run_with_session(
+                session_factory,
+                lambda db: _compute_lead_post_production(
+                    db, lookback_days=effective_config.backend.lookback_days
+                ),
+            )
         else:
-            logger.info("nightly_sync skipped mttr_alpha and lead_post_production due to partial failure")
+            logger.info("nightly_sync skipped mttr_alpha, jira_ready_for_qa hydrate, and lead_post_production due to partial failure")
 
-        if gitlab_ok and jira_ok:
+        if gitlab_ok or jira_ok:
             records_processed += _run_with_session(
                 session_factory, lambda db: _generate_snapshots(db, effective_config)
             )
-        elif gitlab_ok or jira_ok:
-            logger.info("nightly_sync skipped snapshots due to partial failure")
+        else:
+            logger.info("nightly_sync skipped snapshots: both collectors failed or were skipped")
 
         if gitlab_ok and jira_ok:
             status = "success"
