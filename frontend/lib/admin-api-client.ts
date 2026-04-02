@@ -6,8 +6,7 @@ import type {
   MeResponse,
 } from "@/types/admin";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 async function adminRequest<T>(
   path: string,
