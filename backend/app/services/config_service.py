@@ -168,6 +168,21 @@ class RuntimeConfig:
     settings: ConfigurationSchema
     gitlab_token: str
     jira_token: str
+    jira_user_email: str
+
+
+def _resolve_jira_user_email(app_config: AppConfiguration | None) -> str:
+    """Jira Cloud API tokens require Basic auth (email + token); email from env or admin UI."""
+    env_email = _env_text("JIRA_USER_EMAIL")
+    if env_email:
+        return env_email
+    if app_config is not None and isinstance(app_config.settings_json, dict):
+        jira = app_config.settings_json.get("jira")
+        if isinstance(jira, dict):
+            stored = jira.get("api_user_email")
+            if isinstance(stored, str) and stored.strip():
+                return stored.strip()
+    return ""
 
 
 def _resolve_db_tokens(app_config: AppConfiguration | None) -> tuple[str | None, str | None]:
@@ -217,6 +232,7 @@ def load_runtime_config(db: Session | None = None) -> RuntimeConfig:
         settings=config,
         gitlab_token=env_gitlab_token or db_gitlab_token or "",
         jira_token=env_jira_token or db_jira_token or "",
+        jira_user_email=_resolve_jira_user_email(app_config),
     )
 
 

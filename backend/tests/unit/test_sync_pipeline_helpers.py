@@ -141,9 +141,10 @@ def test_run_nightly_sync_failed_without_tokens(monkeypatch: pytest.MonkeyPatch)
             settings=ConfigurationSchema(),
             gitlab_token="",
             jira_token="",
+            jira_user_email="",
         ),
     )
-    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf: 1)
+    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 1)
     monkeypatch.setattr(
         sp,
         "_read_nightly_log_started_at",
@@ -190,9 +191,10 @@ def test_run_nightly_sync_partial_branch_logs_info(monkeypatch: pytest.MonkeyPat
             settings=ConfigurationSchema(),
             gitlab_token="tok",
             jira_token="",
+            jira_user_email="",
         ),
     )
-    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf: 1)
+    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 1)
     monkeypatch.setattr(
         sp,
         "_read_nightly_log_started_at",
@@ -238,9 +240,10 @@ def test_run_nightly_sync_exception_after_success_finishes_failed_log(
             settings=ConfigurationSchema(),
             gitlab_token="a",
             jira_token="b",
+            jira_user_email="",
         ),
     )
-    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf: 7)
+    monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 7)
     monkeypatch.setattr(sp, "_gitlab_table_counts", lambda _db: {"repositories": 1})
     monkeypatch.setattr(sp, "_jira_table_counts", lambda _db: {"bugs": 1})
     monkeypatch.setattr(sp, "_max_metric_snapshot_created_at", lambda _db: None)

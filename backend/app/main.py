@@ -49,8 +49,16 @@ def _http_error_message(detail: object) -> str:
     return str(detail)
 
 
+def _configure_application_logging() -> None:
+    """Ensure ``app.*`` loggers emit at INFO in Docker/uvicorn (root defaults to WARNING)."""
+    level_name = (os.getenv("DORA_LOG_LEVEL") or "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+    logging.getLogger("app").setLevel(level)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    _configure_application_logging()
     with SessionLocal() as db:
         config = load_runtime_config(db=db).settings
     start_scheduler(config)

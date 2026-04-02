@@ -138,3 +138,8 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | DEVOPS-487 | implementation | 2026-04-02 15:48 | 2026-04-02 15:58 | 10m | Fixed admin cookie name in Next middleware; login success UI; Jira DEVOPS-487; commit; Done transition |
 | DEVOPS-487 | bugfix | 2026-04-02 16:10 | 2026-04-02 17:01 | 51m | Root cause 2: cross-origin cookie; added Next.js proxy for /api/*; both api clients use relative /api default |
 | DEVOPS-487 | bugfix | 2026-04-02 17:01 | 2026-04-02 17:33 | 32m | Root cause 3: BACKEND_INTERNAL_URL baked as Docker build arg so proxy routes to backend:8000 not localhost:8000 |
+| adhoc | implementation | 2026-04-02 17:40 | 2026-04-02 17:50 | 10m | Remove environment field from admin UI; add manual sync trigger button |
+| adhoc | implementation | 2026-04-02 18:05 | 2026-04-02 18:35 | 30m | Pipeline visibility: app logging, sync status in-progress, admin poll |
+| adhoc | bugfix | 2026-04-02 17:51 | 2026-04-02 17:53 | 2m | Jira Cloud: use Basic auth (email+API token) via JIRA_USER_EMAIL / admin api_user_email; RuntimeConfig.jira_user_email |
+| DEVOPS-489 | implementation | — | — | 40m | Jira worklog booked (same scope as adhoc 17:40–17:50 10m + 18:05–18:35 30m); subtask of DEVOPS-488; Done |
+| DEVOPS-489 | commit | 2026-04-02 18:08 | OPEN | — | Git commit and push to origin/main |

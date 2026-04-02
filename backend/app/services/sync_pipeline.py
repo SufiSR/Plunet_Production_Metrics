@@ -51,12 +51,17 @@ def _run_with_session(
         return fn(session)
 
 
-def _create_nightly_sync_log(session_factory: Callable[[], Session]) -> int:
+def _create_nightly_sync_log(
+    session_factory: Callable[[], Session],
+    *,
+    trigger: str = "scheduled",
+) -> int:
     def _create(db: Session) -> int:
         row = SyncLog(
             source="nightly",
             started_at=datetime.now(timezone.utc),
             status="running",
+            details_json={"trigger": trigger},
         )
         db.add(row)
         db.commit()
@@ -334,15 +339,23 @@ def run_nightly_sync(
     *,
     config: ConfigurationSchema | None = None,
     session_factory: Callable[[], Session] = SessionLocal,
+    trigger: str = "scheduled",
 ) -> dict[str, str | int]:
+    logger.info("sync_pipeline starting trigger=%s", trigger)
     _resolve_orphaned_sync_logs(session_factory)
     with session_factory() as config_db:
         runtime_config = load_runtime_config(db=config_db)
     effective_config = config or runtime_config.settings
     gitlab_token = runtime_config.gitlab_token
     jira_token = runtime_config.jira_token
+    jira_user_email = runtime_config.jira_user_email
     webhook_url = effective_config.notifications.webhook_url
-    nightly_log_id = _create_nightly_sync_log(session_factory)
+    nightly_log_id = _create_nightly_sync_log(session_factory, trigger=trigger)
+    logger.info(
+        "sync_pipeline sync_log_id=%s trigger=%s phase=collectors (gitlab, jira)",
+        nightly_log_id,
+        trigger,
+    )
 
     gitlab_ok = False
     jira_ok = False
@@ -370,6 +383,13 @@ def run_nightly_sync(
             errors.append(f"gitlab: {msg}")
             logger.error("nightly_sync skipped gitlab: %s", msg)
 
+        logger.info(
+            "sync_pipeline sync_log_id=%s trigger=%s phase=gitlab_done ok=%s",
+            nightly_log_id,
+            trigger,
+            gitlab_ok,
+        )
+
         if (jira_token or "").strip():
             try:
                 records_processed += _run_with_session(
@@ -378,6 +398,7 @@ def run_nightly_sync(
                         db,
                         config=effective_config,
                         jira_token=jira_token,
+                        jira_user_email=jira_user_email,
                     ),
                 )
                 jira_ok = True
@@ -388,6 +409,13 @@ def run_nightly_sync(
             msg = "Jira API token is not configured (JIRA_TOKEN / JIRA_API_TOKEN)"
             errors.append(f"jira: {msg}")
             logger.error("nightly_sync skipped jira: %s", msg)
+
+        logger.info(
+            "sync_pipeline sync_log_id=%s trigger=%s phase=jira_done ok=%s",
+            nightly_log_id,
+            trigger,
+            jira_ok,
+        )
 
         derivation_errors: list[str] = []
 
@@ -413,7 +441,10 @@ def run_nightly_sync(
                 records_processed += _run_with_session(
                     session_factory,
                     lambda db: hydrate_merge_request_jira_ready_for_qa(
-                        db, config=effective_config, jira_token=jira_token
+                        db,
+                        config=effective_config,
+                        jira_token=jira_token,
+                        jira_user_email=jira_user_email,
                     ),
                 )
             except Exception as exc:
@@ -443,6 +474,11 @@ def run_nightly_sync(
                     "nightly_sync generating snapshots despite derivation errors: %s",
                     "; ".join(derivation_errors),
                 )
+            logger.info(
+                "sync_pipeline sync_log_id=%s trigger=%s phase=snapshots",
+                nightly_log_id,
+                trigger,
+            )
             snapshots_written = _run_with_session(
                 session_factory, lambda db: _generate_snapshots(db, effective_config)
             )
@@ -478,6 +514,7 @@ def run_nightly_sync(
         duration_seconds = int((finished_at - started_at).total_seconds())
 
         details_json: dict[str, Any] = {
+            "trigger": trigger,
             "started_at": started_at.isoformat().replace("+00:00", "Z"),
             "finished_at": finished_at.isoformat().replace("+00:00", "Z"),
             "duration_seconds": duration_seconds,
@@ -508,6 +545,14 @@ def run_nightly_sync(
             error_message=" | ".join(errors)[:4000] if errors else None,
             details_json=details_json,
         )
+        logger.info(
+            "sync_pipeline finished sync_log_id=%s trigger=%s status=%s records_processed=%s snapshots=%s",
+            nightly_log_id,
+            trigger,
+            status,
+            records_processed,
+            snapshots_written,
+        )
         payload = {"status": status, "records_processed": records_processed}
         _notify_webhook(webhook_url, payload)
         return payload
@@ -521,6 +566,7 @@ def run_nightly_sync(
         )
         duration_exc = int((finished_at - started_at_exc).total_seconds())
         failure_details: dict[str, Any] = {
+            "trigger": trigger,
             "started_at": started_at_exc.isoformat().replace("+00:00", "Z"),
             "finished_at": finished_at.isoformat().replace("+00:00", "Z"),
             "duration_seconds": duration_exc,
@@ -539,6 +585,12 @@ def run_nightly_sync(
             records_processed=records_processed,
             error_message=" | ".join(errors)[:4000],
             details_json=failure_details,
+        )
+        logger.error(
+            "sync_pipeline crashed sync_log_id=%s trigger=%s",
+            nightly_log_id,
+            trigger,
+            exc_info=True,
         )
         _notify_webhook(webhook_url, {"status": "failed", "records_processed": records_processed})
         raise

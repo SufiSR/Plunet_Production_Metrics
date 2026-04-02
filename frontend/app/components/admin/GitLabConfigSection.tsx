@@ -69,22 +69,13 @@ export function GitLabConfigSection({ config, patch, onPatch }: GitLabConfigSect
       </div>
 
       <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <TextInput
-            id="gitlab_url"
-            label="Instance URL"
-            value={v("gitlab_url")}
-            placeholder="https://gitlab.company.com"
-            onChange={(val) => onPatch({ gitlab_url: val })}
-          />
-          <TextInput
-            id="environment"
-            label="Environment Label"
-            value={v("environment")}
-            placeholder="production"
-            onChange={(val) => onPatch({ environment: val })}
-          />
-        </div>
+        <TextInput
+          id="gitlab_url"
+          label="Instance URL"
+          value={v("gitlab_url")}
+          placeholder="https://gitlab.company.com"
+          onChange={(val) => onPatch({ gitlab_url: val })}
+        />
 
         <SecretInput
           id="gitlab_token"

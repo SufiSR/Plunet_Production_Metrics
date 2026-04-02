@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { adminApiClient } from "@/lib/admin-api-client";
 import type { AdminConfigResponse, AdminConfigPatch } from "@/types/admin";
@@ -10,7 +10,35 @@ import { SchedulerConfigSection } from "@/app/components/admin/SchedulerConfigSe
 import { WebhookConfigSection } from "@/app/components/admin/WebhookConfigSection";
 import { UnsavedToast } from "@/app/components/admin/UnsavedToast";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+
 type SaveState = "idle" | "saving" | "success" | "error";
+type SyncState = "idle" | "triggering" | "triggered" | "error";
+
+type PipelinePollState = {
+  inProgress: boolean;
+  startedAt: string | null;
+  trigger: string | null;
+};
+
+async function fetchPipelineSyncStatus(): Promise<PipelinePollState> {
+  const res = await fetch(`${API_BASE}/sync/status`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(`Sync status HTTP ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    pipeline_in_progress?: boolean;
+    pipeline_run_started_at?: string | null;
+    pipeline_run_trigger?: string | null;
+  };
+  return {
+    inProgress: Boolean(body.pipeline_in_progress),
+    startedAt: body.pipeline_run_started_at ?? null,
+    trigger: body.pipeline_run_trigger ?? null,
+  };
+}
 
 function countDraftFields(patch: AdminConfigPatch): number {
   return Object.keys(patch).filter(
@@ -25,6 +53,13 @@ export default function AdminConfigPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [syncState, setSyncState] = useState<SyncState>("idle");
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [pipelineLive, setPipelineLive] = useState<PipelinePollState | null>(null);
+  const [pipelinePhase, setPipelinePhase] = useState<
+    "idle" | "waiting_for_start" | "running" | "completed" | "stale_poll"
+  >("idle");
+  const pollStopRef = useRef<(() => void) | null>(null);
 
   // Auth guard + load config
   useEffect(() => {
@@ -70,6 +105,79 @@ export default function AdminConfigPage() {
     setSaveState("idle");
     setSaveError(null);
   }, []);
+
+  const handleTriggerSync = useCallback(async () => {
+    setSyncState("triggering");
+    setSyncError(null);
+    setPipelinePhase("idle");
+    setPipelineLive(null);
+    pollStopRef.current?.();
+    pollStopRef.current = null;
+    try {
+      await adminApiClient.triggerSync();
+      setSyncState("triggered");
+      setPipelinePhase("waiting_for_start");
+
+      let sawRunning = false;
+      let polls = 0;
+      const maxPolls = 900;
+      const t = window.setInterval(async () => {
+        polls += 1;
+        try {
+          const s = await fetchPipelineSyncStatus();
+          setPipelineLive(s);
+          if (s.inProgress) {
+            sawRunning = true;
+            setPipelinePhase("running");
+          } else if (sawRunning) {
+            setPipelinePhase("completed");
+            window.clearInterval(t);
+            pollStopRef.current = null;
+            setSyncState("idle");
+            window.setTimeout(() => {
+              setPipelinePhase("idle");
+              setPipelineLive(null);
+            }, 8000);
+            return;
+          }
+          if (!sawRunning && polls >= 25) {
+            setPipelinePhase("stale_poll");
+            window.clearInterval(t);
+            pollStopRef.current = null;
+            setSyncState("idle");
+          }
+          if (polls >= maxPolls) {
+            window.clearInterval(t);
+            pollStopRef.current = null;
+            setSyncState("idle");
+          }
+        } catch {
+          if (polls >= 25 && !sawRunning) {
+            setPipelinePhase("stale_poll");
+            window.clearInterval(t);
+            pollStopRef.current = null;
+            setSyncState("idle");
+          }
+        }
+      }, 2000);
+      pollStopRef.current = () => {
+        window.clearInterval(t);
+        pollStopRef.current = null;
+      };
+
+      window.setTimeout(() => setSyncState("idle"), 4000);
+    } catch (err) {
+      setSyncState("error");
+      setSyncError(err instanceof Error ? err.message : "Failed to trigger sync");
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      pollStopRef.current?.();
+    },
+    []
+  );
 
   if (loadError) {
     return (
@@ -142,6 +250,97 @@ export default function AdminConfigPage() {
           {saveError}
         </div>
       )}
+
+      {/* Manual sync trigger */}
+      <section className="bg-surface-container-lowest p-10 rounded-2xl mb-12">
+        <div className="flex items-start justify-between gap-8">
+          <div>
+            <h2 className="text-2xl font-editorial font-semibold tracking-tight text-on-surface mb-1">
+              Data Pipeline
+            </h2>
+            <p className="text-sm text-on-surface-variant max-w-lg">
+              Trigger a full retrieval run immediately — GitLab sync, Jira sync,
+              cross-system linking, and snapshot generation. While a run is
+              active, status is polled from the public sync API; backend logs
+              print each phase (set <code className="text-xs">DORA_LOG_LEVEL=INFO</code>).
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-3 shrink-0 max-w-md text-right">
+            <button
+              onClick={handleTriggerSync}
+              disabled={syncState === "triggering" || pipelinePhase === "running"}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-on-primary text-sm font-editorial font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <span
+                className={`material-symbols-outlined text-base leading-none ${
+                  syncState === "triggering" ? "animate-spin" : ""
+                }`}
+              >
+                {syncState === "triggering" ? "autorenew" : "play_arrow"}
+              </span>
+              {syncState === "triggering" ? "Starting…" : "Run Now"}
+            </button>
+
+            {pipelinePhase === "waiting_for_start" && (
+              <p className="flex items-center justify-end gap-1.5 text-xs text-on-surface-variant font-editorial">
+                <span className="material-symbols-outlined text-sm leading-none animate-spin">
+                  progress_activity
+                </span>
+                Waiting for pipeline to register (polling sync status)…
+              </p>
+            )}
+            {pipelinePhase === "running" && pipelineLive?.inProgress && (
+              <p className="flex flex-col items-end gap-1 text-xs text-primary font-editorial">
+                <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-sm leading-none animate-spin">
+                    sync
+                  </span>
+                  Pipeline running
+                </span>
+                {pipelineLive.trigger && (
+                  <span className="text-on-surface-variant normal-case font-body">
+                    Trigger: {pipelineLive.trigger}
+                  </span>
+                )}
+                {pipelineLive.startedAt && (
+                  <span className="text-on-surface-variant normal-case font-body">
+                    Started {new Date(pipelineLive.startedAt).toLocaleString()}
+                  </span>
+                )}
+              </p>
+            )}
+            {pipelinePhase === "completed" && (
+              <p className="flex items-center justify-end gap-1.5 text-xs text-secondary font-editorial">
+                <span className="material-symbols-outlined text-sm leading-none">
+                  check_circle
+                </span>
+                Pipeline run finished (sync log closed).
+              </p>
+            )}
+            {pipelinePhase === "stale_poll" && (
+              <p className="flex items-start justify-end gap-1.5 text-xs text-amber-800 dark:text-amber-200 font-editorial text-left">
+                <span className="material-symbols-outlined text-sm leading-none shrink-0 mt-0.5">
+                  warning
+                </span>
+                No running pipeline appeared within ~50s. Check{" "}
+                <code className="text-[10px]">docker logs</code> on the backend
+                container — look for{" "}
+                <code className="text-[10px]">sync_pipeline</code> or{" "}
+                <code className="text-[10px]">admin requested manual</code>.
+              </p>
+            )}
+            {syncState === "error" && syncError && (
+              <p className="flex items-center justify-end gap-1.5 text-xs text-error font-editorial">
+                <span className="material-symbols-outlined text-sm leading-none">
+                  error
+                </span>
+                {syncError}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Form sections */}
       <div className="space-y-12">

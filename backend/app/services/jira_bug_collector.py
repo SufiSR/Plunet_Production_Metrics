@@ -297,15 +297,29 @@ def parse_worklog_entry(raw: dict[str, Any]) -> dict[str, Any] | None:
 
 
 class JiraBugsClient:
-    def __init__(self, base_url: str, token: str, timeout_seconds: float = 30.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        *,
+        user_email: str | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> None:
         self.api_root = f"{base_url.rstrip('/')}/rest/api/3"
+        email = (user_email or "").strip()
+        headers: dict[str, str] = {"Accept": "application/json"}
+        auth: httpx.Auth | None = None
+        if email:
+            # Jira Cloud API tokens: Basic auth with Atlassian account email + API token.
+            auth = httpx.BasicAuth(email, token)
+        else:
+            # OAuth 2.0 (3LO) access tokens use Bearer.
+            headers["Authorization"] = f"Bearer {token}"
         self.client = httpx.Client(
             timeout=timeout_seconds,
             follow_redirects=True,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/json",
-            },
+            headers=headers,
+            auth=auth,
         )
 
     def close(self) -> None:
@@ -544,6 +558,7 @@ def hydrate_merge_request_jira_ready_for_qa(
     *,
     config: ConfigurationSchema,
     jira_token: str,
+    jira_user_email: str = "",
     per_page: int = 100,
 ) -> int:
     """Fetch Ready-for-QA timestamps from Jira for MR-linked keys not covered by ProductionBug.
@@ -578,7 +593,11 @@ def hydrate_merge_request_jira_ready_for_qa(
     if not keys:
         return 0
     touched = 0
-    with JiraBugsClient(base_url=config.jira.base_url, token=jira_token) as jira:
+    with JiraBugsClient(
+        base_url=config.jira.base_url,
+        token=jira_token,
+        user_email=jira_user_email or None,
+    ) as jira:
         for issue_key in keys:
             try:
                 changelog_items = jira.list_issue_changelog(issue_key, max_results=per_page)
@@ -600,6 +619,7 @@ def collect_jira_production_bugs(
     *,
     config: ConfigurationSchema,
     jira_token: str,
+    jira_user_email: str = "",
     per_page: int = 100,
 ) -> int:
     started_at = datetime.now(timezone.utc)
@@ -629,7 +649,11 @@ def collect_jira_production_bugs(
     parent_cache: dict[str, dict[str, Any]] = {}
 
     try:
-        with JiraBugsClient(base_url=config.jira.base_url, token=jira_token) as jira:
+        with JiraBugsClient(
+            base_url=config.jira.base_url,
+            token=jira_token,
+            user_email=jira_user_email or None,
+        ) as jira:
             issues = jira.search_bugs(
                 jql=jql,
                 fields=fields,

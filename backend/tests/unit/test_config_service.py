@@ -64,6 +64,22 @@ def test_runtime_tokens_resolve_env_then_db_encrypted(monkeypatch) -> None:
     assert runtime_from_env.jira_token == "jira-env-token"
 
 
+def test_runtime_jira_user_email_env_then_db(monkeypatch) -> None:
+    monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
+    monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
+    monkeypatch.delenv("JIRA_USER_EMAIL", raising=False)
+    app_config = AppConfiguration(
+        id=1,
+        settings_json={"jira": {"api_user_email": "  stored@example.test  "}},
+    )
+    runtime = config_service.load_runtime_config(db=_FakeSession(app_config))
+    assert runtime.jira_user_email == "stored@example.test"
+
+    monkeypatch.setenv("JIRA_USER_EMAIL", " env@example.test ")
+    runtime_env = config_service.load_runtime_config(db=_FakeSession(app_config))
+    assert runtime_env.jira_user_email == "env@example.test"
+
+
 def test_mask_secret_hint_masks_value() -> None:
     assert config_service.mask_secret_hint("glpat-1234567890") == "glpat****7890"
 

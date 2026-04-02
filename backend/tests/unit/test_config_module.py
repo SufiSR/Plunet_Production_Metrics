@@ -13,6 +13,7 @@ def test_load_configuration_delegates(monkeypatch) -> None:
             settings=ConfigurationSchema(environment="unit"),
             gitlab_token="",
             jira_token="",
+            jira_user_email="",
         ),
     )
     cfg = app_config.load_configuration()

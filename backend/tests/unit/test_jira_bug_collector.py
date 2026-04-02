@@ -270,6 +270,28 @@ def test_is_retryable_http_exception_jira() -> None:
     )
 
 
+def test_jira_client_uses_basic_auth_when_user_email_set() -> None:
+    client = JiraBugsClient(
+        "https://jira.example",
+        "api-token",
+        user_email="user@atlassian.test",
+    )
+    try:
+        assert isinstance(client.client.auth, httpx.BasicAuth)
+        assert "Authorization" not in client.client.headers
+    finally:
+        client.close()
+
+
+def test_jira_client_uses_bearer_when_no_user_email() -> None:
+    client = JiraBugsClient("https://jira.example", "oauth-access")
+    try:
+        assert client.client.auth is None
+        assert client.client.headers.get("Authorization") == "Bearer oauth-access"
+    finally:
+        client.close()
+
+
 def test_jira_search_bugs_follows_next_page_token() -> None:
     client = JiraBugsClient("https://jira.example", "tok")
     pages = [

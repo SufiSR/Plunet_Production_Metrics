@@ -56,4 +56,9 @@ export const adminApiClient = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  triggerSync: () =>
+    adminRequest<{ detail: string }>("/admin/sync/trigger", {
+      method: "POST",
+    }),
 };

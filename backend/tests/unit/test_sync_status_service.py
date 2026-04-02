@@ -60,6 +60,41 @@ def test_build_sync_status_no_log(monkeypatch: pytest.MonkeyPatch) -> None:
         resp = build_sync_status_response(db, config=cfg)
     assert resp.last_sync is None
     assert "0 2 * * *" in resp.sync_schedule_cron
+    assert resp.pipeline_in_progress is False
+    assert resp.pipeline_run_started_at is None
+    assert resp.pipeline_run_trigger is None
+
+
+def test_build_sync_status_pipeline_in_progress(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.sync_status_service.get_scheduler",
+        lambda: None,
+    )
+    started = datetime(2026, 1, 1, 2, 0, tzinfo=timezone.utc)
+    cfg = ConfigurationSchema()
+    with _session() as db:
+        db.add(
+            SyncLog(
+                id=1,
+                source="nightly",
+                started_at=started,
+                finished_at=None,
+                status="running",
+                records_processed=None,
+                error_message=None,
+                details_json={"trigger": "manual"},
+            )
+        )
+        db.commit()
+        resp = build_sync_status_response(db, config=cfg)
+    assert resp.pipeline_in_progress is True
+    assert resp.pipeline_run_started_at is not None
+    prs = resp.pipeline_run_started_at
+    if prs.tzinfo is None:
+        prs = prs.replace(tzinfo=timezone.utc)
+    assert prs == started
+    assert resp.pipeline_run_trigger == "manual"
+    assert resp.last_sync is None
 
 
 def test_build_sync_status_with_scheduler_next_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -169,10 +204,12 @@ def test_build_sync_status_row_with_null_started_at(monkeypatch: pytest.MonkeyPa
     row.finished_at = None
     row.status = "success"
     row.details_json = {}
-    scalars_chain = MagicMock()
-    scalars_chain.first.return_value = row
+    running_chain = MagicMock()
+    running_chain.first.return_value = None
+    last_sync_chain = MagicMock()
+    last_sync_chain.first.return_value = row
     db = MagicMock()
-    db.scalars.return_value = scalars_chain
+    db.scalars.side_effect = [running_chain, last_sync_chain]
     db.scalar.return_value = None
     cfg = ConfigurationSchema()
     resp = build_sync_status_response(db, config=cfg)

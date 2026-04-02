@@ -44,6 +44,20 @@ def build_sync_status_response(
     *,
     config: ConfigurationSchema,
 ) -> SyncStatusResponse:
+    running_row = db.scalars(
+        select(SyncLog)
+        .where(SyncLog.source == "nightly", SyncLog.status == "running")
+        .order_by(SyncLog.started_at.desc())
+        .limit(1)
+    ).first()
+    pipeline_in_progress = running_row is not None
+    pipeline_run_started_at = running_row.started_at if running_row else None
+    pipeline_run_trigger: str | None = None
+    if running_row is not None and isinstance(running_row.details_json, dict):
+        raw_t = running_row.details_json.get("trigger")
+        if isinstance(raw_t, str):
+            pipeline_run_trigger = raw_t
+
     row = db.scalars(
         select(SyncLog)
         .where(SyncLog.source == "nightly", SyncLog.status != "running")
@@ -80,6 +94,9 @@ def build_sync_status_response(
             last_successful_sync_at=last_successful,
             next_scheduled_sync=next_run,
             sync_schedule_cron=cron,
+            pipeline_in_progress=pipeline_in_progress,
+            pipeline_run_started_at=pipeline_run_started_at,
+            pipeline_run_trigger=pipeline_run_trigger,
         )
 
     details = row.details_json if isinstance(row.details_json, dict) else {}
@@ -132,4 +149,7 @@ def build_sync_status_response(
         last_successful_sync_at=last_successful,
         next_scheduled_sync=next_run,
         sync_schedule_cron=cron,
+        pipeline_in_progress=pipeline_in_progress,
+        pipeline_run_started_at=pipeline_run_started_at,
+        pipeline_run_trigger=pipeline_run_trigger,
     )

@@ -29,3 +29,6 @@ class SyncStatusResponse(BaseModel):
     last_successful_sync_at: datetime | None
     next_scheduled_sync: datetime | None
     sync_schedule_cron: str
+    pipeline_in_progress: bool = False
+    pipeline_run_started_at: datetime | None = None
+    pipeline_run_trigger: str | None = None

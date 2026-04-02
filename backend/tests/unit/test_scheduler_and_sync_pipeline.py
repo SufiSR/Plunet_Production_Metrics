@@ -13,6 +13,7 @@ def _fake_load_runtime_config(*_args, **_kwargs) -> RuntimeConfig:
         settings=ConfigurationSchema(),
         gitlab_token="test-gitlab-token",
         jira_token="test-jira-token",
+        jira_user_email="",
     )
 
 
@@ -40,7 +41,7 @@ def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(m
     monkeypatch.setattr(sync_pipeline, "_jira_table_counts", lambda _db: {"bugs": 1})
     monkeypatch.setattr(sync_pipeline, "_max_metric_snapshot_created_at", lambda _db: None)
     monkeypatch.setattr(sync_pipeline, "load_runtime_config", _fake_load_runtime_config)
-    monkeypatch.setattr(sync_pipeline, "_create_nightly_sync_log", lambda _sf: 1)
+    monkeypatch.setattr(sync_pipeline, "_create_nightly_sync_log", lambda _sf, **_: 1)
     monkeypatch.setattr(sync_pipeline, "_finish_nightly_sync_log", lambda *args, **kwargs: 0)
     monkeypatch.setattr(sync_pipeline, "_notify_webhook", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(sync_pipeline, "_resolve_orphaned_sync_logs", lambda _sf: None)
@@ -100,7 +101,7 @@ def test_run_nightly_sync_partial_failure_skips_links_mttr_hydrate_lead_post_but
     monkeypatch.setattr(sync_pipeline, "_jira_table_counts", lambda _db: {"bugs": 1})
     monkeypatch.setattr(sync_pipeline, "_max_metric_snapshot_created_at", lambda _db: None)
     monkeypatch.setattr(sync_pipeline, "load_runtime_config", _fake_load_runtime_config)
-    monkeypatch.setattr(sync_pipeline, "_create_nightly_sync_log", lambda _sf: 2)
+    monkeypatch.setattr(sync_pipeline, "_create_nightly_sync_log", lambda _sf, **_: 2)
     monkeypatch.setattr(sync_pipeline, "_finish_nightly_sync_log", lambda *args, **kwargs: 0)
     monkeypatch.setattr(sync_pipeline, "_notify_webhook", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(sync_pipeline, "_resolve_orphaned_sync_logs", lambda _sf: None)
