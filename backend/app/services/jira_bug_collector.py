@@ -17,6 +17,8 @@ from app.models.issue_worklog import IssueWorklog
 from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.sync_log import SyncLog
+from app.services.collector_progress_log import log_every_n
+from app.services.sync_data_floor import sync_min_date_jql
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +361,15 @@ class JiraBugsClient:
     ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
         next_page_token: str | None = None
+        page_num = 0
         while True:
+            page_num += 1
+            before = len(issues)
+            logger.info(
+                "jira API search/jql: fetching page %s (issues so far: %s)",
+                page_num,
+                before,
+            )
             params: dict[str, Any] = {
                 "jql": jql,
                 "fields": ",".join(fields),
@@ -371,9 +381,20 @@ class JiraBugsClient:
                 params["nextPageToken"] = next_page_token
             payload = self._get_json(f"{self.api_root}/search/jql", params=params)
             page_issues = payload.get("issues")
+            added = 0
             if isinstance(page_issues, list):
-                issues.extend(item for item in page_issues if isinstance(item, dict))
+                for item in page_issues:
+                    if isinstance(item, dict):
+                        issues.append(item)
+                        added += 1
             next_page_token = str(payload.get("nextPageToken") or "").strip() or None
+            logger.info(
+                "jira API search/jql: page %s returned %s issues (running total: %s, has_next_page=%s)",
+                page_num,
+                added,
+                len(issues),
+                bool(next_page_token),
+            )
             if next_page_token is None:
                 break
         return issues
@@ -429,6 +450,7 @@ class JiraBugsClient:
 def _build_bug_jql(lookback_from: datetime, excluded_projects: list[str]) -> str:
     jql = (
         'issuetype in ("Bug","Bug Subtask") '
+        f'AND created >= "{sync_min_date_jql()}" '
         f'AND updated >= "{lookback_from.strftime("%Y-%m-%d")}"'
     )
     projects = [project.strip() for project in excluded_projects if project.strip()]
@@ -654,13 +676,19 @@ def collect_jira_production_bugs(
             token=jira_token,
             user_email=jira_user_email or None,
         ) as jira:
+            logger.info("jira collector: running paginated JQL search (expand=%s)", "changelog")
             issues = jira.search_bugs(
                 jql=jql,
                 fields=fields,
                 max_results=per_page,
                 expand="changelog",
             )
-            for issue in issues:
+            total_issues = len(issues)
+            logger.info(
+                "jira collector: retrieved %s issues from search, processing (changelog/worklogs)",
+                total_issues,
+            )
+            for idx, issue in enumerate(issues, start=1):
                 issue_key = str(issue.get("key") or "").strip()
                 issue_fields = issue.get("fields")
                 if not issue_key or not isinstance(issue_fields, dict):
@@ -774,6 +802,12 @@ def collect_jira_production_bugs(
                 )
                 _sync_issue_worklogs(db, bug_id=bug.id, parsed_worklogs=parsed_worklogs)
                 processed += 1
+                log_every_n(
+                    logger,
+                    prefix=f"jira collector issue={issue_key}",
+                    index=idx,
+                    total=total_issues,
+                )
 
         sync_log.status = "success"
         sync_log.finished_at = datetime.now(timezone.utc)

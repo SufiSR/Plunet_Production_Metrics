@@ -142,11 +142,11 @@ def test_lookback_from_returns_utc_midnight_timestamp() -> None:
     assert lookback.second == 0
 
 
-def test_build_bug_jql_uses_updated_window_and_excluded_projects() -> None:
+def test_build_bug_jql_uses_created_floor_updated_window_and_excluded_projects() -> None:
     lookback = datetime(2026, 4, 1, tzinfo=timezone.utc)
     jql = _build_bug_jql(lookback, ["INT", " OPS "])
+    assert 'created >= "2024-01-01"' in jql
     assert 'updated >= "2026-04-01"' in jql
-    assert "created >=" not in jql
     assert 'project NOT IN ("INT","OPS")' in jql
 
 

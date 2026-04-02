@@ -143,3 +143,12 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | adhoc | bugfix | 2026-04-02 17:51 | 2026-04-02 17:53 | 2m | Jira Cloud: use Basic auth (email+API token) via JIRA_USER_EMAIL / admin api_user_email; RuntimeConfig.jira_user_email |
 | DEVOPS-489 | implementation | — | — | 40m | Jira worklog booked (same scope as adhoc 17:40–17:50 10m + 18:05–18:35 30m); subtask of DEVOPS-488; Done |
 | DEVOPS-489 | commit | 2026-04-02 18:08 | 2026-04-02 18:08 | 0m | Git commit and push to origin/main |
+| DEVOPS-490 | implementation | 2026-04-02 18:14 | 2026-04-02 18:17 | 3m | Collector progress logging; Jira worklog 3m; subtask of DEVOPS-488; Done |
+| adhoc | bugfix | 2026-04-02 18:30 | 2026-04-02 18:31 | 1m | docker-compose: explicit DORA_LOG_LEVEL interpolation; .env.docker.example note |
+| adhoc | bugfix | 2026-04-02 18:33 | 2026-04-02 18:35 | 2m | app logger StreamHandler stderr so docker logs show pipeline/collector INFO |
+| adhoc | bugfix | 2026-04-02 18:40 | 2026-04-02 18:41 | 1m | Jira JQL per-page logs + sync phase=jira_start; gitlab collector start line |
+| adhoc | implementation | 2026-04-02 18:42 | 2026-04-02 18:44 | 2m | JQL hard floor created >= 2023-01-01 for production bugs |
+| adhoc | implementation | 2026-04-02 18:46 | 2026-04-02 18:47 | 1m | Sync floor 2024-01-01 Jira + GitLab MR/commits; sync_data_floor module |
+| adhoc | investigation | 2026-04-02 18:16 | 2026-04-02 18:21 | 5m | DB table counts and latest timestamps (Docker backend + db) |
+| DEVOPS-491 | implementation | — | — | 12m | Jira worklog (compose/logging/JQL/sync floor/investigation); Bug Subtask DEVOPS-488; Done |
+| DEVOPS-491 | commit | 2026-04-02 18:50 | 2026-04-02 18:51 | 1m | Git commit and push to GitLab |

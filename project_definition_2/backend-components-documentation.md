@@ -67,8 +67,8 @@ External calls use **httpx** (sync or async) with **Tenacity** retries on transi
 | --- | --- |
 | `sync_repositories()` | Resolve configured projects; upsert `Repository` |
 | `sync_tags()` | List tags; upsert `Release` with `customer_release`, version parse, `committed_at` |
-| `sync_merge_requests()` | Merged MRs per `target_branch`; upsert `MergeRequest` with `merged_at`, SHAs, `jira_key` |
-| `sync_mr_first_commit_timestamps()` | For MRs with `first_commit_at IS NULL`, `GET /merge_requests/:iid/commits`, set earliest `committed_date` |
+| `sync_merge_requests()` | Merged MRs per `target_branch`; upsert `MergeRequest` with `merged_at`, SHAs, `jira_key`. MRs merged **before 2024-01-01** are dropped (hard floor, shared with Jira) |
+| `sync_mr_first_commit_timestamps()` | `GET /merge_requests/:iid/commits`; set earliest **`committed_date` ≥ 2024-01-01** as `first_commit_at` |
 | `map_mrs_to_customer_releases()` | Commit refs API; set `first_customer_tag`, `first_customer_tag_date`, `lead_time_hours`, `release_wait_time_hours`, `lead_time_match_status` |
 | `sync_commits()` | Optional: enrich `Commit` table for traceability |
 
@@ -78,7 +78,7 @@ External calls use **httpx** (sync or async) with **Tenacity** retries on transi
 
 | Function | Description |
 | --- | --- |
-| `sync_production_bugs()` | JQL pull; upsert `ProductionBug` including **`priority`**, versions, health, indicators |
+| `sync_production_bugs()` | JQL pull; upsert `ProductionBug` including **`priority`**, versions, health, indicators. JQL requires **`created >= 2024-01-01`** (hard floor) and **`updated`** in the configured lookback window |
 | `sync_issue_worklogs()` | Per issue: worklog API; upsert `issue_worklog`; refresh **`total_worklog_seconds`** on `production_bug` |
 | `sync_ready_for_qa_timestamp()` | Changelog API; first transition to a status in **`ready_for_qa_status_names`** → **`ready_for_qa_at`** |
 | `map_bugs_to_releases()` | Populate `bug_release` / CFR links from `affects_version` ↔ `Release` |

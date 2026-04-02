@@ -25,6 +25,8 @@ from app.models.merge_request import MergeRequest
 from app.models.release import Release
 from app.models.repository import Repository
 from app.models.sync_log import SyncLog
+from app.services.collector_progress_log import log_every_n
+from app.services.sync_data_floor import sync_min_datetime_utc
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +269,7 @@ class GitLabTagsClient:
         page = 1
         merge_requests: list[dict[str, Any]] = []
         lookback_start = _lookback_from(lookback_days)
+        merged_not_before = max(lookback_start, sync_min_datetime_utc())
 
         while True:
             payload = self._get_json(
@@ -290,7 +293,7 @@ class GitLabTagsClient:
                 parsed = _parse_merge_request(item)
                 if parsed is None:
                     continue
-                if parsed["merged_at"] >= lookback_start:
+                if parsed["merged_at"] >= merged_not_before:
                     merge_requests.append(parsed)
 
             if len(payload) < per_page:
@@ -539,29 +542,50 @@ def _sync_first_commit_timestamps(
 ) -> int:
     updated = 0
     lookback_start = _lookback_from(lookback_days)
-    merge_requests = db.execute(
-        select(MergeRequest).where(
-            MergeRequest.repository_id == repository.id,
-            or_(
-                MergeRequest.merged_at >= lookback_start,
-                MergeRequest.updated_at >= lookback_start,
-            ),
+    sync_min = sync_min_datetime_utc()
+    mr_list = list(
+        db.execute(
+            select(MergeRequest).where(
+                MergeRequest.repository_id == repository.id,
+                MergeRequest.merged_at >= sync_min,
+                or_(
+                    MergeRequest.merged_at >= lookback_start,
+                    MergeRequest.updated_at >= lookback_start,
+                ),
+            )
+        ).scalars()
+    )
+    total_mrs = len(mr_list)
+    if total_mrs:
+        logger.info(
+            "gitlab collector project=%s: fetching commits for %s merge requests (first_commit_at)",
+            project_path,
+            total_mrs,
         )
-    ).scalars()
-    for merge_request in merge_requests:
+    for idx, merge_request in enumerate(mr_list, start=1):
         commits = gitlab.list_merge_request_commits(
             project_path,
             merge_request_iid=int(merge_request.gitlab_mr_id),
             per_page=per_page,
         )
+        n_commits = len(commits)
         committed_dates = [
             parsed
             for parsed in (_parse_dt(str(item.get("committed_date") or "")) for item in commits)
-            if parsed is not None
+            if parsed is not None and parsed >= sync_min
         ]
         if committed_dates:
             merge_request.first_commit_at = min(committed_dates)
             updated += 1
+        log_every_n(
+            logger,
+            prefix=(
+                f"gitlab collector project={project_path} first_commit_at "
+                f"(MR iid={merge_request.gitlab_mr_id}, commits_in_mr={n_commits})"
+            ),
+            index=idx,
+            total=total_mrs,
+        )
         _apply_cooldown(cooldown_seconds)
     return updated
 
@@ -578,6 +602,7 @@ def _map_merge_requests_to_customer_releases(
 ) -> int:
     mapped = 0
     lookback_start = _lookback_from(lookback_days)
+    sync_min = sync_min_datetime_utc()
     releases = db.execute(
         select(Release).where(
             Release.repository_id == repository.id,
@@ -585,19 +610,29 @@ def _map_merge_requests_to_customer_releases(
         )
     ).scalars()
     releases_by_tag = {release.tag_name: release for release in releases}
-    merge_requests = db.execute(
-        select(MergeRequest).where(
-            MergeRequest.repository_id == repository.id,
-            or_(
-                MergeRequest.merged_at >= lookback_start,
-                MergeRequest.first_customer_tag.is_(None),
-            ),
+    mr_list = list(
+        db.execute(
+            select(MergeRequest).where(
+                MergeRequest.repository_id == repository.id,
+                MergeRequest.merged_at >= sync_min,
+                or_(
+                    MergeRequest.merged_at >= lookback_start,
+                    MergeRequest.first_customer_tag.is_(None),
+                ),
+            )
+        ).scalars()
+    )
+    total_mrs = len(mr_list)
+    if total_mrs:
+        logger.info(
+            "gitlab collector project=%s: mapping %s merge requests to customer releases",
+            project_path,
+            total_mrs,
         )
-    ).scalars()
 
     ref_cache: dict[str, list[dict[str, Any]]] = {}
 
-    for merge_request in merge_requests:
+    for idx, merge_request in enumerate(mr_list, start=1):
         if not merge_request.effective_commit_sha:
             merge_request.lead_time_match_status = "no_effective_commit_sha"
             _clear_mr_release_fields(merge_request)
@@ -659,6 +694,12 @@ def _map_merge_requests_to_customer_releases(
             merge_request.lead_time_hours = None
             merge_request.lead_time_match_status = "first_commit_missing"
         mapped += 1
+        log_every_n(
+            logger,
+            prefix=f"gitlab collector project={project_path} customer_release_map",
+            index=idx,
+            total=total_mrs,
+        )
     return mapped
 
 
@@ -678,6 +719,11 @@ def collect_gitlab_tags_and_releases(
     project_paths, target_branches, markers = _merged_gitlab_settings(config)
     marker_re = _markers_regex(markers)
     processed = 0
+    logger.info(
+        "gitlab collector: starting (%s project(s), %s target branch(es))",
+        len(project_paths),
+        len(target_branches),
+    )
 
     try:
         with GitLabTagsClient(base_url=config.gitlab.base_url, token=gitlab_token) as gitlab:
@@ -685,7 +731,15 @@ def collect_gitlab_tags_and_releases(
                 project = gitlab.get_project(project_path)
                 repository = _upsert_repository(db, project_path, project)
                 seen_release_tags: set[str] = set()
-                for tag in gitlab.list_tags(project_path=project_path, per_page=per_page):
+                tags = gitlab.list_tags(project_path=project_path, per_page=per_page)
+                logger.info(
+                    "gitlab collector project=%s: retrieved %s tags from API, upserting releases",
+                    project_path,
+                    len(tags),
+                )
+                tag_upserts = 0
+                n_tags = len(tags)
+                for scan_i, tag in enumerate(tags, start=1):
                     tag_name = tag.get("name")
                     raw_commit = tag.get("commit")
                     commit = raw_commit if isinstance(raw_commit, dict) else {}
@@ -703,6 +757,23 @@ def collect_gitlab_tags_and_releases(
                         committed_at=committed_at,
                     )
                     processed += 1
+                    tag_upserts += 1
+                    if tag_upserts == 1 or tag_upserts % 10 == 0:
+                        logger.info(
+                            "gitlab collector project=%s: tag releases upserted=%s "
+                            "(scanned %s/%s tags from API)",
+                            project_path,
+                            tag_upserts,
+                            scan_i,
+                            n_tags,
+                        )
+                if tag_upserts:
+                    logger.info(
+                        "gitlab collector project=%s: tag releases done, %s upserts from %s API tags",
+                        project_path,
+                        tag_upserts,
+                        n_tags,
+                    )
                 processed += _reconcile_repository_releases(
                     db,
                     repository_id=repository.id,
@@ -720,9 +791,21 @@ def collect_gitlab_tags_and_releases(
                         )
                     )
 
-                for merge_request in _deduplicate_merge_requests(merge_requests):
+                deduped_mrs = _deduplicate_merge_requests(merge_requests)
+                logger.info(
+                    "gitlab collector project=%s: %s merged MRs after dedupe, upserting",
+                    project_path,
+                    len(deduped_mrs),
+                )
+                for i, merge_request in enumerate(deduped_mrs, start=1):
                     _upsert_merge_request(db, repository_id=repository.id, payload=merge_request)
                     processed += 1
+                    log_every_n(
+                        logger,
+                        prefix=f"gitlab collector project={project_path} merge_request_upsert",
+                        index=i,
+                        total=len(deduped_mrs),
+                    )
 
                 processed += _sync_first_commit_timestamps(
                     db,

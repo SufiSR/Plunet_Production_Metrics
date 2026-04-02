@@ -43,6 +43,9 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-dora}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dora_metrics}
       # Repo-root YAML is not in the image; mount it so defaults (e.g. gitlab.project_paths) load.
       DORA_CONFIG_PATH: /app/configuration.yml
+      # Pulled from project .env via Compose interpolation (visible in `docker compose config`).
+      # Also in env_file above; default INFO matches backend main.py.
+      DORA_LOG_LEVEL: ${DORA_LOG_LEVEL:-INFO}
     volumes:
       - ./configuration.yml:/app/configuration.yml:ro
     ports:

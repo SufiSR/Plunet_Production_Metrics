@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -50,10 +51,23 @@ def _http_error_message(detail: object) -> str:
 
 
 def _configure_application_logging() -> None:
-    """Ensure ``app.*`` loggers emit at INFO in Docker/uvicorn (root defaults to WARNING)."""
+    """Attach a stderr handler for ``app.*`` so logs show in ``docker logs`` (no log files).
+
+    Uvicorn's default dictConfig often leaves the root logger without a handler that
+    receives third-party library loggers; setting level alone is not enough.
+    """
     level_name = (os.getenv("DORA_LOG_LEVEL") or "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
-    logging.getLogger("app").setLevel(level)
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(level)
+    if not app_logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setLevel(level)
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+        )
+        app_logger.addHandler(handler)
+    app_logger.propagate = False
 
 
 @asynccontextmanager

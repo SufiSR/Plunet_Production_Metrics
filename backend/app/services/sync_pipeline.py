@@ -391,6 +391,12 @@ def run_nightly_sync(
         )
 
         if (jira_token or "").strip():
+            logger.info(
+                "sync_pipeline sync_log_id=%s trigger=%s phase=jira_start "
+                "(paginated JQL search then per-issue changelog/worklogs; may take minutes)",
+                nightly_log_id,
+                trigger,
+            )
             try:
                 records_processed += _run_with_session(
                     session_factory,
