@@ -142,4 +142,4 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | adhoc | implementation | 2026-04-02 18:05 | 2026-04-02 18:35 | 30m | Pipeline visibility: app logging, sync status in-progress, admin poll |
 | adhoc | bugfix | 2026-04-02 17:51 | 2026-04-02 17:53 | 2m | Jira Cloud: use Basic auth (email+API token) via JIRA_USER_EMAIL / admin api_user_email; RuntimeConfig.jira_user_email |
 | DEVOPS-489 | implementation | — | — | 40m | Jira worklog booked (same scope as adhoc 17:40–17:50 10m + 18:05–18:35 30m); subtask of DEVOPS-488; Done |
-| DEVOPS-489 | commit | 2026-04-02 18:08 | OPEN | — | Git commit and push to origin/main |
+| DEVOPS-489 | commit | 2026-04-02 18:08 | 2026-04-02 18:08 | 0m | Git commit and push to origin/main |
