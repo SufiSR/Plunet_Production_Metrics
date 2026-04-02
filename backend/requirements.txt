@@ -14,6 +14,7 @@ cryptography
 
 # Development and quality tooling
 pytest
+pytest-cov
 pytest-asyncio
 testcontainers[postgresql]
 ruff

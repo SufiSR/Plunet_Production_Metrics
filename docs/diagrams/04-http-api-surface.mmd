@@ -1,0 +1,15 @@
+flowchart LR
+  subgraph public [Unauthenticated reads]
+    H["/api/health"]
+    M["/api/metrics/*"]
+    REPO["/api/repositories"]
+    SYNC["/api/sync/status"]
+  end
+
+  subgraph admin [Admin session]
+    A1["/api/auth/*"]
+    A2["/api/admin/config"]
+  end
+
+  Browser[Browser / embed] --> public
+  Browser --> admin

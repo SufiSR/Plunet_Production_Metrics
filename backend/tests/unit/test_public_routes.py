@@ -13,7 +13,9 @@ from app.models import Base
 
 
 @pytest.fixture
-def public_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+def public_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Generator[TestClient, None, None]:
     db_path = tmp_path / "public_routes.sqlite"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{db_path.resolve().as_posix()}")
     monkeypatch.setenv("DORA_SESSION_SECRET", "unit-test-session-secret-strings")

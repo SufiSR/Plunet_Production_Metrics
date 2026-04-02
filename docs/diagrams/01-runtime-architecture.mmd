@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph external [External systems]
+    GL[GitLab API]
+    JR[Jira API]
+  end
+
+  subgraph backend [Backend process]
+    API[FastAPI /api]
+    SCH[APScheduler]
+    PIPE[sync_pipeline.run_nightly_sync]
+    SVC[Services layer]
+  end
+
+  DB[(PostgreSQL)]
+
+  GL --> SVC
+  JR --> SVC
+  SVC --> DB
+  API --> DB
+  SCH --> PIPE
+  PIPE --> SVC
+  API --> SCH

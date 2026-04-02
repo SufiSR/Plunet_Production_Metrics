@@ -1,0 +1,37 @@
+flowchart TB
+  subgraph api [app/api]
+    R[router.py mounts routes]
+    MP[metrics_public.py]
+    SP[sync_public.py]
+    RP[repositories_public.py]
+    AC[admin_config.py]
+    AU[auth.py]
+  end
+
+  subgraph services [app/services]
+    GLC[gitlab_release_collector]
+    JBC[jira_bug_collector]
+    SS[snapshot_service]
+    MS[metric_service]
+    MPS[metrics_public_service]
+    STS[sync_status_service]
+    HS[health_service]
+    ACS[admin_config_service]
+    CFG[config_service]
+  end
+
+  subgraph data [app/models + database]
+    ORM[SQLAlchemy models]
+  end
+
+  R --> MP & SP & RP & AC & AU
+  MP --> MPS --> MS
+  SP --> STS
+  AC --> ACS
+  AU --> deps[deps: session + admin gate]
+
+  GLC & JBC & SS --> ORM
+  MS --> ORM
+  STS & HS --> ORM
+  ACS --> ORM
+  CFG --> ORM

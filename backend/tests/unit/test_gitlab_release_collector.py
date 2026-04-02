@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config_schema import ConfigurationSchema
 from app.models.base import Base
 from app.models.merge_request import MergeRequest
 from app.models.release import Release
@@ -19,6 +21,7 @@ from app.services.gitlab_release_collector import (
     _lookback_from,
     _map_merge_requests_to_customer_releases,
     _markers_regex,
+    _merged_gitlab_settings,
     _parse_dt,
     _parse_merge_request,
     _reconcile_repository_releases,
@@ -48,6 +51,28 @@ def test_parse_tag_version_non_semver_returns_none_fields() -> None:
     assert parsed.minor is None
     assert parsed.patch is None
     assert parsed.pre_release is None
+
+
+def test_parse_tag_version_none_or_whitespace() -> None:
+    empty = parse_tag_version(None)
+    assert empty.major is None
+    assert parse_tag_version("   ").major is None
+
+
+def test_merged_gitlab_settings_default_markers_and_branches() -> None:
+    cfg = ConfigurationSchema.model_validate(
+        {
+            "gitlab": {
+                "project_paths": ["a/b"],
+                "target_branches": [],
+                "non_customer_release_markers": [],
+            }
+        }
+    )
+    paths, branches, markers = _merged_gitlab_settings(cfg)
+    assert paths == ["a/b"]
+    assert "master" in branches
+    assert "rc" in markers
 
 
 def test_customer_release_false_for_configured_markers() -> None:
@@ -155,6 +180,42 @@ def test_list_merge_request_commits_paginates() -> None:
             "group/project", merge_request_iid=42, per_page=2,
         )
         assert [item["id"] for item in commits] == ["c1", "c2", "c3"]
+    finally:
+        client.close()
+
+
+def test_list_tags_paginates() -> None:
+    client = GitLabTagsClient(base_url="https://gitlab.example.com", token="dummy")
+    responses = [
+        [{"name": "v1.0.0", "commit": {"id": "a" * 40, "committed_date": "2026-01-01T00:00:00Z"}}],
+        [{"name": "v1.0.1", "commit": {"id": "b" * 40, "committed_date": "2026-01-02T00:00:00Z"}}],
+        [],
+    ]
+
+    def fake_get_json(url: str, *, params: dict[str, int] | None = None) -> object:
+        assert "/repository/tags" in url
+        assert params is not None
+        idx = params["page"] - 1
+        return responses[idx] if idx < len(responses) else []
+
+    try:
+        client._get_json = fake_get_json  # type: ignore[method-assign]
+        tags = client.list_tags("group/project", per_page=1)
+        assert [t["name"] for t in tags] == ["v1.0.0", "v1.0.1"]
+    finally:
+        client.close()
+
+
+def test_get_project_raises_on_non_dict_payload() -> None:
+    client = GitLabTagsClient(base_url="https://gitlab.example.com", token="dummy")
+
+    def fake_get_json(_url: str, *, params: dict[str, object] | None = None) -> object:
+        return []
+
+    try:
+        client._get_json = fake_get_json  # type: ignore[method-assign]
+        with pytest.raises(TypeError, match="Unexpected GitLab project response"):
+            client.get_project("g/p")
     finally:
         client.close()
 

@@ -1,0 +1,7 @@
+erDiagram
+  Repository ||--o{ Release : has
+  Repository ||--o{ MergeRequest : has
+  Repository ||--o{ MetricSnapshot : has
+  ProductionBug ||--o{ BugRelease : links
+  Release ||--o{ BugRelease : links
+  ProductionBug ||--o{ IssueWorklog : has

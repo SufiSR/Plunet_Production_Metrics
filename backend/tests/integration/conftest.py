@@ -9,8 +9,22 @@ from testcontainers.postgres import PostgresContainer
 from alembic import command
 
 
+def _docker_daemon_reachable() -> bool:
+    try:
+        import docker
+
+        docker.from_env().ping()
+        return True
+    except Exception:
+        return False
+
+
 @pytest.fixture(scope="session")
 def postgres_url() -> Generator[str, None, None]:
+    if not _docker_daemon_reachable():
+        pytest.skip(
+            "Docker daemon not reachable; integration tests need Docker for PostgreSQL.",
+        )
     with PostgresContainer("postgres:16") as postgres:
         yield postgres.get_connection_url()
 

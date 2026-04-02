@@ -1,0 +1,29 @@
+flowchart TD
+  START([run_nightly_sync]) --> LOG[Create SyncLog: running]
+  LOG --> GL{GitLab token + collect}
+  LOG --> JR{Jira token + collect}
+
+  GL -->|ok| GL_OK[gitlab_ok]
+  GL -->|fail / missing token| GL_FAIL[gitlab_ok = false]
+
+  JR -->|ok| JR_OK[jira_ok]
+  JR -->|fail / missing token| JR_FAIL[jira_ok = false]
+
+  GL_OK --> BOTH{both ok?}
+  JR_OK --> BOTH
+  BOTH -->|yes| MAP[map_bugs_to_releases]
+  MAP --> MTTR[_resolve_mttr_alpha_fix_releases]
+  MTTR --> HYDR[hydrate_merge_request_jira_ready_for_qa]
+  HYDR --> LPP[_compute_lead_post_production]
+
+  BOTH -->|no| SKIP_DERIV[Skip cross-system derivations]
+
+  GL_OK --> ANY{gitlab_ok OR jira_ok?}
+  JR_OK --> ANY
+  SKIP_DERIV --> ANY
+
+  ANY -->|yes| SNAP[refresh_snapshots → metric_snapshot]
+  ANY -->|no| NO_SNAP[Skip snapshots]
+
+  SNAP --> FIN[Finish SyncLog + webhook]
+  NO_SNAP --> FIN
