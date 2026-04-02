@@ -136,3 +136,4 @@ If the OPEN entry is missing, ask the user for the actual start time before clos
 Never log to Jira until the entry is finalized (no OPEN or — remaining).
 
 | DEVOPS-487 | implementation | 2026-04-02 15:48 | 2026-04-02 15:58 | 10m | Fixed admin cookie name in Next middleware; login success UI; Jira DEVOPS-487; commit; Done transition |
+| DEVOPS-487 | bugfix | 2026-04-02 16:10 | 2026-04-02 17:01 | 51m | Root cause 2: cross-origin cookie; added Next.js proxy for /api/*; both api clients use relative /api default |
