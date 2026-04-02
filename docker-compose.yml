@@ -71,11 +71,15 @@ services:
       dockerfile: Dockerfile
       args:
         # NEXT_PUBLIC_API_URL is baked at build time.
-        # Set to the public-facing URL Caddy exposes for the backend API, e.g.:
-        #   https://dora.example.com/api
-        # or leave the default for localhost-only setups:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        # Use a relative path (/api) so the browser goes through the Next.js
+        # proxy rewrite, keeping the session cookie on the same origin.
+        # For a Caddy-fronted production setup use: https://dora.example.com/api
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
     restart: unless-stopped
+    environment:
+      # Runtime URL used by the Next.js server-side proxy to reach the backend.
+      # Must be the internal Docker service URL (not localhost).
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
