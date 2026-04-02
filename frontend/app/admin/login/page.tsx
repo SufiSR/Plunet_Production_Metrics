@@ -23,7 +23,9 @@ function AdminLoginForm() {
     try {
       await adminApiClient.login({ username, password });
       setSuccess("Signed in. Redirecting…");
-      router.push(next);
+      // Hard navigation ensures the next page request carries the new session
+      // cookie from the start, avoiding Next.js App Router soft-nav cache issues.
+      window.location.href = next;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
       setLoading(false);
