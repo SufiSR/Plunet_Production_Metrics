@@ -115,6 +115,7 @@ Record only actual active work time.
 | DEVOPS-442 | planning | 2026-04-02 13:10 | 2026-04-02 14:20 | 70m | Reviewed DEVOPS-442, design requirements (DESIGN_LIGHT.md, DESIGN_DARK.md, admin_config prototype), existing frontend/backend code, drafted full 11-task plan, posted to Jira, set estimate 3h30m, transitioned to Development |
 | DEVOPS-442 | implementation | 2026-04-02 14:20 | 2026-04-02 14:45 | 25m | middleware, admin-api-client, types/admin, AdminSidebar, SecretInput, UnsavedToast, TagListInput, GitLab/Jira/Scheduler/Webhook sections, login/config pages, 13 new tests (33 total), tsc+eslint clean, commit e88425b pushed |
 | DEVOPS-429 | implementation | 2026-04-02 15:18 | 2026-04-02 15:19 | 1m | Docker backend: mount configuration.yml, DORA_CONFIG_PATH; .env.example + deployment + backend README |
+| DEVOPS-429 | validation | 2026-04-02 15:20 | 2026-04-02 15:41 | 21m | Docker compose up: frontend SSR fixes, next.config.mjs standalone, itsdangerous, compose healthchecks, configuration.yml Jira CF string ids; stack healthy |
 
 ## Session protocol
 

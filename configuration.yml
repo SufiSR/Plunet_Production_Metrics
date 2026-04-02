@@ -25,10 +25,10 @@ gitlab:
 
 jira:
   base_url: https://plunet.atlassian.net
-  excluded_projects: []
+  excluded_projects: [DEVOPS, JIRATESTS]
   ready_for_qa_status_names:
     - Ready for QA
-  production_bug_indicator_cf_ids: []
+  production_bug_indicator_cf_ids: ["10114", "10123"]
 
 notifications:
   webhook_url: null

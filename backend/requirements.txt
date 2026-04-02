@@ -1,5 +1,6 @@
 fastapi
 uvicorn[standard]
+itsdangerous>=2.0
 apscheduler
 sqlalchemy
 psycopg2-binary

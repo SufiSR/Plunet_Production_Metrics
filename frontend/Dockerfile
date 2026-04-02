@@ -34,7 +34,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# next.config.ts sets output:'standalone' – copy only the self-contained server
+# next.config.mjs sets output:'standalone' – copy only the self-contained server
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
