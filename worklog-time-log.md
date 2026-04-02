@@ -109,6 +109,8 @@ Record only actual active work time.
 | DEVOPS-441 | planning | 2026-04-02 12:10 | 2026-04-02 12:31 | 21m | Reviewed DEVOPS-441, design requirements (DESIGN_LIGHT.md, HTML prototypes), identified dark mode token gap, drafted full 12-subtask implementation plan, got user approval on all 5 design decisions |
 | DEVOPS-441 | implementation | 2026-04-02 12:31 | 2026-04-02 12:49 | 18m | Full DEVOPS-441 implementation: DESIGN_DARK.md, Tailwind v4 CSS vars, next-themes, Zustand, API client, HeaderBar, MetricGrid, TrendChart, MetricModal, StaleBanner, embed route, CSP config, LeadPostProductionTable, 20 tests, typecheck+lint clean |
 | DEVOPS-466 | jira-update | 2026-04-02 20:00 | 2026-04-02 20:20 | 20m | Jira comment + worklog: short delivery recap for tests/docs push (commit 8f311f9); aligns with repo worklog-time-log |
+| DEVOPS-443 | planning | 2026-04-02 21:15 | 2026-04-02 21:20 | 5m | Reviewed issue, fetched Jira, read spec and repo structure, drafted plan, posted to Jira, set estimate 1.5h, transitioned to In Progress |
+| DEVOPS-443 | implementation | 2026-04-02 21:20 | 2026-04-02 21:40 | 20m | backend/Dockerfile, frontend/Dockerfile, docker-compose.yml, .env.docker.example, docs/deployment.md, next.config.ts standalone output, .gitignore update |
 
 ## Session protocol
 

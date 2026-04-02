@@ -12,6 +12,8 @@ const confluenceOrigins = [
 ].join(" ");
 
 const nextConfig: NextConfig = {
+  // Produces .next/standalone for minimal Docker image (no node_modules copy needed).
+  output: "standalone",
   async headers() {
     return [
       {
