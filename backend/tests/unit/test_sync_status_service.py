@@ -85,7 +85,21 @@ def test_build_sync_status_ignores_stale_running_when_later_finished_exists(
                 status="running",
                 records_processed=None,
                 error_message=None,
-                details_json={"trigger": "manual"},
+                details_json={
+                    "trigger": "manual",
+                    "pipeline_runtime": {
+                        "current_phase": "jira",
+                        "phase_started_at": "2026-01-01T02:10:00+00:00",
+                        "phases": {
+                            "gitlab": {"status": "success"},
+                            "jira": {"status": "running"},
+                            "derivations": {"status": "pending"},
+                            "snapshots": {"status": "pending"},
+                            "complete": {"status": "pending"},
+                        },
+                        "errors": [],
+                    },
+                },
             )
         )
         db.add(
@@ -123,7 +137,21 @@ def test_build_sync_status_pipeline_in_progress(monkeypatch: pytest.MonkeyPatch)
                 status="running",
                 records_processed=None,
                 error_message=None,
-                details_json={"trigger": "manual"},
+                details_json={
+                    "trigger": "manual",
+                    "pipeline_runtime": {
+                        "current_phase": "jira",
+                        "phase_started_at": "2026-01-01T02:10:00+00:00",
+                        "phases": {
+                            "gitlab": {"status": "success"},
+                            "jira": {"status": "running"},
+                            "derivations": {"status": "pending"},
+                            "snapshots": {"status": "pending"},
+                            "complete": {"status": "pending"},
+                        },
+                        "errors": [],
+                    },
+                },
             )
         )
         db.commit()
@@ -135,7 +163,40 @@ def test_build_sync_status_pipeline_in_progress(monkeypatch: pytest.MonkeyPatch)
         prs = prs.replace(tzinfo=timezone.utc)
     assert prs == started
     assert resp.pipeline_run_trigger == "manual"
+    assert resp.pipeline_runtime is not None
+    assert resp.pipeline_runtime.current_phase == "jira"
+    assert resp.pipeline_runtime.phases["gitlab"].status == "success"
+    assert resp.pipeline_runtime.phases["jira"].status == "running"
     assert resp.last_sync is None
+
+
+def test_build_sync_status_pipeline_runtime_defaults_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.sync_status_service.get_scheduler",
+        lambda: None,
+    )
+    started = datetime(2026, 1, 1, 2, 0, tzinfo=timezone.utc)
+    cfg = ConfigurationSchema()
+    with _session() as db:
+        db.add(
+            SyncLog(
+                id=1,
+                source="nightly",
+                started_at=started,
+                finished_at=None,
+                status="running",
+                records_processed=None,
+                error_message=None,
+                details_json={"trigger": "manual"},
+            )
+        )
+        db.commit()
+        resp = build_sync_status_response(db, config=cfg)
+    assert resp.pipeline_runtime is not None
+    assert resp.pipeline_runtime.current_phase == "queued"
+    assert resp.pipeline_runtime.phases["gitlab"].status == "pending"
 
 
 def test_build_sync_status_with_scheduler_next_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -187,6 +248,18 @@ def test_build_sync_status_collectors_and_duration(monkeypatch: pytest.MonkeyPat
                 records_processed=None,
                 error_message=None,
                 details_json={
+                    "pipeline_runtime": {
+                        "current_phase": "finished",
+                        "phase_started_at": "2026-01-01T01:11:00+00:00",
+                        "phases": {
+                            "gitlab": {"status": "success"},
+                            "jira": {"status": "success"},
+                            "derivations": {"status": "success"},
+                            "snapshots": {"status": "success"},
+                            "complete": {"status": "success"},
+                        },
+                        "errors": [],
+                    },
                     "collectors": {
                         "gitlab": {"status": "success", "records_processed": {"x": 1}},
                         "jira": {"status": "oops"},

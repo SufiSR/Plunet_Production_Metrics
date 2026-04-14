@@ -154,3 +154,6 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | DEVOPS-491 | commit | 2026-04-02 18:50 | 2026-04-02 18:51 | 1m | Git commit and push to GitLab |
 | adhoc | bugfix | 2026-04-02 18:53 | 2026-04-02 18:57 | 4m | GitLab monitored path: dev/plunet like POC; configuration.yml + env examples; YAML project_path coercion |
 | DEVOPS-429 | implementation | 2026-04-02 19:15 | 2026-04-02 19:23 | 8m | Docker pipeline: fix empty DB project_paths override, stale nightly running rows, sync status + frontend types; GitLab dev/plunet default; Jira hydrate 404 skip |
+| adhoc | implementation | 2026-04-14 12:07 | 2026-04-14 12:20 | 13m | Implement dual-display deployment frequency UX for sparse data |
+| adhoc | investigation | 2026-04-14 12:20 | 2026-04-14 12:28 | 8m | Fix current metric endpoint picking up incomplete current-week windows |
+| adhoc | implementation | 2026-04-14 12:28 | 2026-04-14 13:16 | 48m | Update backend metrics public service to aggregate the entire active period rather than just the latest bucket |

@@ -13,6 +13,7 @@ export interface MetricValue {
   unit: string;
   dora_level: DoraLevel;
   trend_pct: number | null;
+  secondary_text?: string;
 }
 
 export interface MetricsCurrentResponse {
@@ -62,6 +63,22 @@ export interface LastSyncBlock {
   error_message?: string | null;
 }
 
+export interface PipelinePhaseBlock {
+  status: "pending" | "running" | "success" | "failed" | "skipped" | string;
+  message?: string | null;
+  records_processed: Record<string, number>;
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_seconds?: number | null;
+}
+
+export interface PipelineRuntimeBlock {
+  current_phase: string;
+  phase_started_at: string | null;
+  phases: Record<string, PipelinePhaseBlock>;
+  errors: string[];
+}
+
 export interface SyncStatusResponse {
   last_sync: LastSyncBlock | null;
   last_successful_sync_at: string | null;
@@ -70,6 +87,7 @@ export interface SyncStatusResponse {
   pipeline_in_progress: boolean;
   pipeline_run_started_at: string | null;
   pipeline_run_trigger: string | null;
+  pipeline_runtime: PipelineRuntimeBlock | null;
 }
 
 // ── Repositories ─────────────────────────────────────────────────────────────

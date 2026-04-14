@@ -12,8 +12,9 @@ backend:
 
 gitlab:
   base_url: https://gitlab.plunet.com
+  # Same as POC: URL path segment after host (e.g. https://gitlab.plunet.com/dev/plunet/-/tags → dev/plunet)
   project_paths:
-    - operations/dora-metrics
+    - dev/plunet
   target_branches:
     - master
     - 9.x

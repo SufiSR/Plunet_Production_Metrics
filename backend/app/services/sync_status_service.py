@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 from app.config_schema import ConfigurationSchema
 from app.models.sync_log import SyncLog
 from app.scheduler import get_scheduler
-from app.schemas.sync_status import CollectorStatusBlock, LastSyncBlock, SyncStatusResponse
+from app.schemas.sync_status import (
+    CollectorStatusBlock,
+    LastSyncBlock,
+    PipelinePhaseBlock,
+    PipelineRuntimeBlock,
+    SyncStatusResponse,
+)
 
 
 def _map_run_status(raw: str) -> str:
@@ -37,6 +43,79 @@ def _parse_iso_dt(value: Any) -> datetime | None:
         except ValueError:
             return None
     return None
+
+
+def _default_runtime(trigger: str | None = None) -> PipelineRuntimeBlock:
+    now = datetime.now(timezone.utc)
+    phase_names = ("gitlab", "jira", "derivations", "snapshots", "complete")
+    phases = {
+        phase: PipelinePhaseBlock(
+            status="pending",
+            message=None,
+            records_processed={},
+            started_at=None,
+            finished_at=None,
+            duration_seconds=None,
+        )
+        for phase in phase_names
+    }
+    if trigger:
+        phases["complete"].message = f"Triggered by {trigger}"
+    return PipelineRuntimeBlock(
+        current_phase="queued",
+        phase_started_at=now,
+        phases=phases,
+        errors=[],
+    )
+
+
+def _parse_pipeline_runtime(details: dict[str, Any], *, trigger: str | None) -> PipelineRuntimeBlock:
+    runtime_raw = details.get("pipeline_runtime")
+    if not isinstance(runtime_raw, dict):
+        return _default_runtime(trigger)
+
+    phase_names = ("gitlab", "jira", "derivations", "snapshots", "complete")
+    phases_raw = runtime_raw.get("phases") if isinstance(runtime_raw.get("phases"), dict) else {}
+    phases: dict[str, PipelinePhaseBlock] = {}
+    for name in phase_names:
+        block = phases_raw.get(name)
+        if isinstance(block, dict):
+            rec = block.get("records_processed")
+            phases[name] = PipelinePhaseBlock(
+                status=str(block.get("status") or "pending"),
+                message=str(block.get("message")) if isinstance(block.get("message"), str) else None,
+                records_processed=rec if isinstance(rec, dict) else {},
+                started_at=_parse_iso_dt(block.get("started_at")),
+                finished_at=_parse_iso_dt(block.get("finished_at")),
+                duration_seconds=(
+                    int(block.get("duration_seconds"))
+                    if isinstance(block.get("duration_seconds"), int)
+                    else None
+                ),
+            )
+            continue
+        phases[name] = PipelinePhaseBlock(
+            status="pending",
+            message=None,
+            records_processed={},
+            started_at=None,
+            finished_at=None,
+            duration_seconds=None,
+        )
+
+    errors_raw = runtime_raw.get("errors")
+    errors = [str(err) for err in errors_raw if isinstance(err, str)] if isinstance(errors_raw, list) else []
+
+    return PipelineRuntimeBlock(
+        current_phase=str(runtime_raw.get("current_phase") or "queued"),
+        phase_started_at=(
+            _parse_iso_dt(runtime_raw.get("phase_started_at"))
+            or _parse_iso_dt(details.get("started_at"))
+            or datetime.now(timezone.utc)
+        ),
+        phases=phases,
+        errors=errors,
+    )
 
 
 def build_sync_status_response(
@@ -67,6 +146,12 @@ def build_sync_status_response(
         raw_t = running_row.details_json.get("trigger")
         if isinstance(raw_t, str):
             pipeline_run_trigger = raw_t
+    pipeline_runtime: PipelineRuntimeBlock | None = None
+    if running_row is not None and isinstance(running_row.details_json, dict):
+        pipeline_runtime = _parse_pipeline_runtime(
+            running_row.details_json,
+            trigger=pipeline_run_trigger,
+        )
 
     row = db.scalars(
         select(SyncLog)
@@ -107,6 +192,7 @@ def build_sync_status_response(
             pipeline_in_progress=pipeline_in_progress,
             pipeline_run_started_at=pipeline_run_started_at,
             pipeline_run_trigger=pipeline_run_trigger,
+            pipeline_runtime=pipeline_runtime,
         )
 
     details = row.details_json if isinstance(row.details_json, dict) else {}
@@ -167,4 +253,5 @@ def build_sync_status_response(
         pipeline_in_progress=pipeline_in_progress,
         pipeline_run_started_at=pipeline_run_started_at,
         pipeline_run_trigger=pipeline_run_trigger,
+        pipeline_runtime=pipeline_runtime,
     )

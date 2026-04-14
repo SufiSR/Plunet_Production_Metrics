@@ -21,8 +21,8 @@ function formatValue(value: number | null, unit: string): {
 } {
   if (value === null) return { main: "—", suffix: "" };
 
-  if (unit === "deploys / day") {
-    return { main: value.toFixed(1), suffix: "" };
+  if (unit === "deploys / week") {
+    return { main: value.toFixed(1), suffix: "/wk" };
   }
   if (unit === "hours") {
     if (value < 1) {
@@ -96,6 +96,13 @@ export function MetricCard({
               </span>
             )}
           </div>
+        )}
+
+        {/* Secondary text */}
+        {data?.secondary_text && !isLoading && !isError && (
+          <p className="text-[10px] text-on-surface-variant italic mt-1">
+            {data.secondary_text}
+          </p>
         )}
 
         {/* Label row + trend */}

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { adminApiClient } from "@/lib/admin-api-client";
 import type { AdminConfigResponse, AdminConfigPatch } from "@/types/admin";
+import type { PipelineRuntimeBlock, SyncStatusResponse } from "@/types/api";
 import { GitLabConfigSection } from "@/app/components/admin/GitLabConfigSection";
 import { JiraConfigSection } from "@/app/components/admin/JiraConfigSection";
 import { SchedulerConfigSection } from "@/app/components/admin/SchedulerConfigSection";
@@ -19,6 +20,7 @@ type PipelinePollState = {
   inProgress: boolean;
   startedAt: string | null;
   trigger: string | null;
+  runtime: PipelineRuntimeBlock | null;
 };
 
 async function fetchPipelineSyncStatus(): Promise<PipelinePollState> {
@@ -28,16 +30,37 @@ async function fetchPipelineSyncStatus(): Promise<PipelinePollState> {
   if (!res.ok) {
     throw new Error(`Sync status HTTP ${res.status}`);
   }
-  const body = (await res.json()) as {
-    pipeline_in_progress?: boolean;
-    pipeline_run_started_at?: string | null;
-    pipeline_run_trigger?: string | null;
-  };
+  const body = (await res.json()) as Partial<SyncStatusResponse>;
   return {
     inProgress: Boolean(body.pipeline_in_progress),
     startedAt: body.pipeline_run_started_at ?? null,
     trigger: body.pipeline_run_trigger ?? null,
+    runtime: body.pipeline_runtime ?? null,
   };
+}
+
+const PIPELINE_PHASES: Array<{ key: string; label: string }> = [
+  { key: "gitlab", label: "GitLab" },
+  { key: "jira", label: "Jira" },
+  { key: "derivations", label: "Derivations" },
+  { key: "snapshots", label: "Snapshots" },
+  { key: "complete", label: "Complete" },
+];
+
+function phaseIcon(status?: string): string {
+  if (status === "running") return "sync";
+  if (status === "success") return "check_circle";
+  if (status === "failed") return "error";
+  if (status === "skipped") return "skip_next";
+  return "radio_button_unchecked";
+}
+
+function phaseTextClass(status?: string): string {
+  if (status === "running") return "text-primary";
+  if (status === "success") return "text-secondary";
+  if (status === "failed") return "text-error";
+  if (status === "skipped") return "text-on-surface-variant";
+  return "text-on-surface-variant";
 }
 
 function countDraftFields(patch: AdminConfigPatch): number {
@@ -291,8 +314,8 @@ export default function AdminConfigPage() {
               </p>
             )}
             {pipelinePhase === "running" && pipelineLive?.inProgress && (
-              <p className="flex flex-col items-end gap-1 text-xs text-primary font-editorial">
-                <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+              <div className="flex flex-col items-end gap-2 text-xs font-editorial max-w-md">
+                <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-primary">
                   <span className="material-symbols-outlined text-sm leading-none animate-spin">
                     sync
                   </span>
@@ -308,7 +331,41 @@ export default function AdminConfigPage() {
                     Started {new Date(pipelineLive.startedAt).toLocaleString()}
                   </span>
                 )}
-              </p>
+                {pipelineLive.runtime && (
+                  <div className="w-full space-y-1.5 rounded-xl border border-outline-variant p-3 text-left">
+                    <div className="text-[10px] uppercase tracking-wider text-on-surface-variant">
+                      Current phase: {pipelineLive.runtime.current_phase}
+                    </div>
+                    {PIPELINE_PHASES.map((phase) => {
+                      const phaseState = pipelineLive.runtime?.phases?.[phase.key];
+                      const status = phaseState?.status ?? "pending";
+                      return (
+                        <div
+                          key={phase.key}
+                          className={`flex items-center justify-between gap-3 ${phaseTextClass(status)}`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`material-symbols-outlined text-sm leading-none ${
+                                status === "running" ? "animate-spin" : ""
+                              }`}
+                            >
+                              {phaseIcon(status)}
+                            </span>
+                            {phase.label}
+                          </span>
+                          <span className="uppercase tracking-wider text-[10px]">{status}</span>
+                        </div>
+                      );
+                    })}
+                    {pipelineLive.runtime.errors.length > 0 && (
+                      <div className="pt-1 text-error text-[11px]">
+                        {pipelineLive.runtime.errors[0]}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {pipelinePhase === "completed" && (
               <p className="flex items-center justify-end gap-1.5 text-xs text-secondary font-editorial">

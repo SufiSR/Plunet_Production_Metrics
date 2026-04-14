@@ -21,7 +21,9 @@ describe("apiClient", () => {
       expect.stringContaining("/metrics/current?period=30d"),
       expect.any(Object)
     );
-    expect(result).toEqual(mockData);
+    expect(result.generated_at).toEqual(mockData.generated_at);
+    expect(result).toHaveProperty("deployment_frequency");
+    expect(result).toHaveProperty("lead_time_for_changes");
   });
 
   it("getMetricsHistory calls correct endpoint with period", async () => {
@@ -58,5 +60,37 @@ describe("apiClient", () => {
     } as unknown as Response);
 
     await expect(apiClient.getSyncStatus()).rejects.toThrow("HTTP 500");
+  });
+
+  it("includes pipeline_runtime when sync status provides it", async () => {
+    const mockData = {
+      last_sync: null,
+      last_successful_sync_at: null,
+      next_scheduled_sync: null,
+      sync_schedule_cron: "0 2 * * *",
+      pipeline_in_progress: true,
+      pipeline_run_started_at: "2026-04-14T09:21:14.010690Z",
+      pipeline_run_trigger: "manual",
+      pipeline_runtime: {
+        current_phase: "jira",
+        phase_started_at: "2026-04-14T09:22:00Z",
+        phases: {
+          gitlab: { status: "success", records_processed: {} },
+          jira: { status: "running", records_processed: {} },
+          derivations: { status: "pending", records_processed: {} },
+          snapshots: { status: "pending", records_processed: {} },
+          complete: { status: "pending", records_processed: {} },
+        },
+        errors: [],
+      },
+    };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockData,
+    } as Response);
+
+    const result = await apiClient.getSyncStatus();
+    expect(result.pipeline_runtime?.current_phase).toBe("jira");
+    expect(result.pipeline_runtime?.phases.jira.status).toBe("running");
   });
 });

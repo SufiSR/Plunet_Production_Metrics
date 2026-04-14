@@ -29,6 +29,103 @@ from app.services.snapshot_service import refresh_snapshots
 
 logger = logging.getLogger(__name__)
 
+PIPELINE_PHASES: tuple[str, ...] = ("gitlab", "jira", "derivations", "snapshots", "complete")
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _new_pipeline_runtime(*, trigger: str) -> dict[str, Any]:
+    now_iso = _utc_now_iso()
+    return {
+        "current_phase": "queued",
+        "phase_started_at": now_iso,
+        "trigger": trigger,
+        "phases": {
+            phase: {
+                "status": "pending",
+                "message": None,
+                "records_processed": {},
+                "started_at": None,
+                "finished_at": None,
+                "duration_seconds": None,
+            }
+            for phase in PIPELINE_PHASES
+        },
+        "errors": [],
+    }
+
+
+def _transition_runtime_phase(
+    runtime: dict[str, Any],
+    *,
+    current_phase: str,
+    phase: str,
+    status: str,
+    message: str | None = None,
+    records_processed: dict[str, int] | None = None,
+) -> None:
+    now_iso = _utc_now_iso()
+    runtime["current_phase"] = current_phase
+    runtime["phase_started_at"] = now_iso
+    phases = runtime.setdefault("phases", {})
+    phase_block = phases.setdefault(
+        phase,
+        {
+            "status": "pending",
+            "message": None,
+            "records_processed": {},
+            "started_at": None,
+            "finished_at": None,
+            "duration_seconds": None,
+        },
+    )
+    previous_started_at = phase_block.get("started_at")
+    if status == "running" and previous_started_at is None:
+        phase_block["started_at"] = now_iso
+    if status in {"success", "failed", "skipped"}:
+        if previous_started_at is None:
+            phase_block["started_at"] = now_iso
+        phase_block["finished_at"] = now_iso
+        try:
+            started_dt = datetime.fromisoformat(str(phase_block["started_at"]).replace("Z", "+00:00"))
+            finished_dt = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+            phase_block["duration_seconds"] = int((finished_dt - started_dt).total_seconds())
+        except (ValueError, TypeError):
+            phase_block["duration_seconds"] = None
+    if message is not None:
+        phase_block["message"] = message[:400]
+    if records_processed is not None:
+        phase_block["records_processed"] = records_processed
+    phase_block["status"] = status
+
+
+def _append_runtime_error(runtime: dict[str, Any], error_message: str) -> None:
+    errors = runtime.setdefault("errors", [])
+    errors.append(error_message[:400])
+
+
+def _update_nightly_sync_log_details(
+    session_factory: Callable[[], Session],
+    *,
+    log_id: int,
+    details_json: dict[str, Any],
+) -> int:
+    def _update(db: Session) -> int:
+        if db is None:
+            return 0
+        row = db.get(SyncLog, log_id)
+        if row is None:
+            return 0
+        existing = row.details_json if isinstance(row.details_json, dict) else {}
+        merged = {**existing, **details_json}
+        row.details_json = merged
+        db.commit()
+        return 0
+
+    return _run_with_session(session_factory, _update)
+
 
 def _normalize_version_key(value: str) -> set[str]:
     normalized = value.strip().lower()
@@ -57,11 +154,15 @@ def _create_nightly_sync_log(
     trigger: str = "scheduled",
 ) -> int:
     def _create(db: Session) -> int:
+        started_at = datetime.now(timezone.utc)
         row = SyncLog(
             source="nightly",
-            started_at=datetime.now(timezone.utc),
+            started_at=started_at,
             status="running",
-            details_json={"trigger": trigger},
+            details_json={
+                "trigger": trigger,
+                "pipeline_runtime": _new_pipeline_runtime(trigger=trigger),
+            },
         )
         db.add(row)
         db.commit()
@@ -376,6 +477,12 @@ def run_nightly_sync(
     jira_user_email = runtime_config.jira_user_email
     webhook_url = effective_config.notifications.webhook_url
     nightly_log_id = _create_nightly_sync_log(session_factory, trigger=trigger)
+    pipeline_runtime = _new_pipeline_runtime(trigger=trigger)
+    _update_nightly_sync_log_details(
+        session_factory,
+        log_id=nightly_log_id,
+        details_json={"pipeline_runtime": pipeline_runtime},
+    )
     logger.info(
         "sync_pipeline sync_log_id=%s trigger=%s phase=collectors (gitlab, jira)",
         nightly_log_id,
@@ -389,6 +496,18 @@ def run_nightly_sync(
     errors: list[str] = []
 
     try:
+        _transition_runtime_phase(
+            pipeline_runtime,
+            current_phase="gitlab",
+            phase="gitlab",
+            status="running",
+            message="GitLab collector started",
+        )
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
         if (gitlab_token or "").strip():
             try:
                 records_processed += _run_with_session(
@@ -400,13 +519,41 @@ def run_nightly_sync(
                     ),
                 )
                 gitlab_ok = True
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="gitlab",
+                    phase="gitlab",
+                    status="success",
+                    message="GitLab collector finished",
+                )
             except Exception as exc:
                 errors.append(f"gitlab: {exc}")
+                _append_runtime_error(pipeline_runtime, f"gitlab: {exc}")
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="gitlab",
+                    phase="gitlab",
+                    status="failed",
+                    message="GitLab collector failed",
+                )
                 logger.exception("nightly_sync gitlab collector failed")
         else:
             msg = "GitLab API token is not configured (GITLAB_TOKEN / GITLAB_API_TOKEN)"
             errors.append(f"gitlab: {msg}")
+            _append_runtime_error(pipeline_runtime, f"gitlab: {msg}")
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="gitlab",
+                phase="gitlab",
+                status="skipped",
+                message="GitLab collector skipped: token missing",
+            )
             logger.error("nightly_sync skipped gitlab: %s", msg)
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
 
         logger.info(
             "sync_pipeline sync_log_id=%s trigger=%s phase=gitlab_done ok=%s",
@@ -415,6 +562,18 @@ def run_nightly_sync(
             gitlab_ok,
         )
 
+        _transition_runtime_phase(
+            pipeline_runtime,
+            current_phase="jira",
+            phase="jira",
+            status="running",
+            message="Jira collector started",
+        )
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
         if (jira_token or "").strip():
             logger.info(
                 "sync_pipeline sync_log_id=%s trigger=%s phase=jira_start "
@@ -433,13 +592,41 @@ def run_nightly_sync(
                     ),
                 )
                 jira_ok = True
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="jira",
+                    phase="jira",
+                    status="success",
+                    message="Jira collector finished",
+                )
             except Exception as exc:
                 errors.append(f"jira: {exc}")
+                _append_runtime_error(pipeline_runtime, f"jira: {exc}")
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="jira",
+                    phase="jira",
+                    status="failed",
+                    message="Jira collector failed",
+                )
                 logger.exception("nightly_sync jira collector failed")
         else:
             msg = "Jira API token is not configured (JIRA_TOKEN / JIRA_API_TOKEN)"
             errors.append(f"jira: {msg}")
+            _append_runtime_error(pipeline_runtime, f"jira: {msg}")
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="jira",
+                phase="jira",
+                status="skipped",
+                message="Jira collector skipped: token missing",
+            )
             logger.error("nightly_sync skipped jira: %s", msg)
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
 
         logger.info(
             "sync_pipeline sync_log_id=%s trigger=%s phase=jira_done ok=%s",
@@ -449,6 +636,27 @@ def run_nightly_sync(
         )
 
         derivation_errors: list[str] = []
+        if gitlab_ok and jira_ok:
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="derivations",
+                phase="derivations",
+                status="running",
+                message="Derivation steps running",
+            )
+        else:
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="derivations",
+                phase="derivations",
+                status="skipped",
+                message="Skipped because both collectors are not successful",
+            )
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
 
         if gitlab_ok and jira_ok:
             try:
@@ -498,6 +706,29 @@ def run_nightly_sync(
             )
 
         errors.extend(derivation_errors)
+        if gitlab_ok and jira_ok:
+            if derivation_errors:
+                _append_runtime_error(pipeline_runtime, "; ".join(derivation_errors))
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="derivations",
+                    phase="derivations",
+                    status="failed",
+                    message="One or more derivation steps failed",
+                )
+            else:
+                _transition_runtime_phase(
+                    pipeline_runtime,
+                    current_phase="derivations",
+                    phase="derivations",
+                    status="success",
+                    message="Derivation steps finished",
+                )
+            _update_nightly_sync_log_details(
+                session_factory,
+                log_id=nightly_log_id,
+                details_json={"pipeline_runtime": pipeline_runtime},
+            )
 
         if gitlab_ok or jira_ok:
             if derivation_errors:
@@ -510,12 +741,44 @@ def run_nightly_sync(
                 nightly_log_id,
                 trigger,
             )
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="snapshots",
+                phase="snapshots",
+                status="running",
+                message="Snapshot generation started",
+            )
+            _update_nightly_sync_log_details(
+                session_factory,
+                log_id=nightly_log_id,
+                details_json={"pipeline_runtime": pipeline_runtime},
+            )
             snapshots_written = _run_with_session(
                 session_factory, lambda db: _generate_snapshots(db, effective_config)
             )
             records_processed += snapshots_written
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="snapshots",
+                phase="snapshots",
+                status="success",
+                message="Snapshot generation finished",
+                records_processed={"snapshots_generated": snapshots_written},
+            )
         else:
             logger.info("nightly_sync skipped snapshots: both collectors failed or were skipped")
+            _transition_runtime_phase(
+                pipeline_runtime,
+                current_phase="snapshots",
+                phase="snapshots",
+                status="skipped",
+                message="Skipped because both collectors failed or were skipped",
+            )
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
 
         if gitlab_ok and jira_ok:
             status = "success"
@@ -566,7 +829,17 @@ def run_nightly_sync(
                 if snapshot_generated_at
                 else None
             ),
+            "pipeline_runtime": pipeline_runtime,
         }
+        _transition_runtime_phase(
+            pipeline_runtime,
+            current_phase="finished",
+            phase="complete",
+            status="success" if status != "failed" else "failed",
+            message="Pipeline finished",
+            records_processed={"total_records_processed": records_processed},
+        )
+        details_json["pipeline_runtime"] = pipeline_runtime
 
         _finish_nightly_sync_log(
             session_factory,
@@ -589,6 +862,19 @@ def run_nightly_sync(
         return payload
     except Exception as exc:
         errors.append(f"nightly: {exc}")
+        _append_runtime_error(pipeline_runtime, f"nightly: {exc}")
+        _transition_runtime_phase(
+            pipeline_runtime,
+            current_phase="failed",
+            phase="complete",
+            status="failed",
+            message="Pipeline crashed",
+        )
+        _update_nightly_sync_log_details(
+            session_factory,
+            log_id=nightly_log_id,
+            details_json={"pipeline_runtime": pipeline_runtime},
+        )
         finished_at = datetime.now(timezone.utc)
 
         started_at_exc = _run_with_session(
@@ -608,6 +894,7 @@ def run_nightly_sync(
             },
             "snapshots_generated": 0,
             "snapshot_generated_at": None,
+            "pipeline_runtime": pipeline_runtime,
         }
         _finish_nightly_sync_log(
             session_factory,

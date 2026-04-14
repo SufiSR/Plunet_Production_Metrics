@@ -141,72 +141,61 @@ class _Window:
     period_end: date
 
 
-def _latest_window(
+def _recent_windows(
     db: Session,
     *,
     period_type: str,
     repository_id: int | None,
-) -> _Window | None:
-    q = select(func.max(MetricSnapshot.period_end)).where(MetricSnapshot.period_type == period_type)
-    if repository_id is not None:
-        q = q.where(MetricSnapshot.repository_id == repository_id)
-    max_end = db.scalar(q)
-    if max_end is None:
-        return None
-    q2 = select(MetricSnapshot.period_start).where(
-        MetricSnapshot.period_type == period_type,
-        MetricSnapshot.period_end == max_end,
+    limit: int,
+) -> list[_Window]:
+    today = datetime.now(timezone.utc).date()
+    q = (
+        select(MetricSnapshot.period_start, MetricSnapshot.period_end)
+        .where(
+            MetricSnapshot.period_type == period_type,
+            MetricSnapshot.period_end <= today,
+        )
+        .distinct()
+        .order_by(MetricSnapshot.period_end.desc())
     )
     if repository_id is not None:
-        q2 = q2.where(MetricSnapshot.repository_id == repository_id)
-    start = db.scalar(q2.limit(1))
-    if start is None:
-        return None
-    return _Window(period_start=start, period_end=max_end)
-
-
-def _previous_window(window: _Window, period_type: str) -> _Window:
-    if period_type == "WEEK":
-        return _Window(
-            period_start=window.period_start - timedelta(days=7),
-            period_end=window.period_end - timedelta(days=7),
+        q = q.where(MetricSnapshot.repository_id == repository_id)
+    
+    results = db.execute(q.limit(limit)).all()
+    if not results:
+        fallback_q = (
+            select(MetricSnapshot.period_start, MetricSnapshot.period_end)
+            .where(MetricSnapshot.period_type == period_type)
+            .distinct()
+            .order_by(MetricSnapshot.period_end.desc())
         )
-    if period_type == "MONTH":
-        y, m = window.period_start.year, window.period_start.month
-        if m == 1:
-            prev_start = date(y - 1, 12, 1)
-        else:
-            prev_start = date(y, m - 1, 1)
-        # approximate month end: day before next month start
-        if prev_start.month == 12:
-            next_m = date(prev_start.year + 1, 1, 1)
-        else:
-            next_m = date(prev_start.year, prev_start.month + 1, 1)
-        prev_end = next_m - timedelta(days=1)
-        return _Window(period_start=prev_start, period_end=prev_end)
-    # QUARTER
-    qm = ((window.period_start.month - 1) // 3) * 3 + 1
-    if qm == 1:
-        prev_q_start = date(window.period_start.year - 1, 10, 1)
-    else:
-        prev_q_start = date(window.period_start.year, qm - 3, 1)
-    # end of prev quarter: day before current quarter start
-    prev_end = window.period_start - timedelta(days=1)
-    return _Window(period_start=prev_q_start, period_end=prev_end)
+        if repository_id is not None:
+            fallback_q = fallback_q.where(MetricSnapshot.repository_id == repository_id)
+        results = db.execute(fallback_q.limit(limit)).all()
+        
+    return [_Window(period_start=r[0], period_end=r[1]) for r in results]
 
 
-def _load_snapshots_for_window(
+def _load_snapshots_for_windows(
     db: Session,
     *,
     period_type: str,
-    window: _Window,
+    windows: list[_Window],
     repository_id: int | None,
 ) -> list[MetricSnapshot]:
+    if not windows:
+        return []
+    
+    from sqlalchemy import or_
+    conditions = [
+        (MetricSnapshot.period_start == w.period_start) & (MetricSnapshot.period_end == w.period_end)
+        for w in windows
+    ]
+    
     q = select(MetricSnapshot).where(
         MetricSnapshot.period_type == period_type,
-        MetricSnapshot.period_start == window.period_start,
-        MetricSnapshot.period_end == window.period_end,
         MetricSnapshot.repository_id.isnot(None),
+        or_(*conditions)
     )
     if repository_id is not None:
         q = q.where(MetricSnapshot.repository_id == repository_id)
@@ -241,8 +230,23 @@ def build_current_metrics_response(
     repository_id: int | None = None,
     period_type: str = "WEEK",
 ) -> CurrentMetricsResponse:
-    window = _latest_window(db, period_type=period_type, repository_id=repository_id)
-    if window is None:
+    if period_type == "WEEK":
+        window_count = 4
+    elif period_type == "MONTH":
+        window_count = 3
+    elif period_type == "QUARTER":
+        window_count = 4
+    else:
+        window_count = 1
+
+    recent = _recent_windows(
+        db,
+        period_type=period_type,
+        repository_id=repository_id,
+        limit=window_count * 2
+    )
+
+    if not recent:
         today = datetime.now(timezone.utc).date()
         monday = today - timedelta(days=today.weekday())
         sunday = monday + timedelta(days=6)
@@ -264,19 +268,27 @@ def build_current_metrics_response(
             release_wait_time=None,
         )
 
-    rows = _load_snapshots_for_window(
+    current_windows = recent[:window_count]
+    prev_windows = recent[window_count:]
+
+    rows = _load_snapshots_for_windows(
         db,
         period_type=period_type,
-        window=window,
+        windows=current_windows,
         repository_id=repository_id,
     )
-    prev_w = _previous_window(window, period_type)
-    prev_rows = _load_snapshots_for_window(
-        db, period_type=period_type, window=prev_w, repository_id=repository_id
+    prev_rows = _load_snapshots_for_windows(
+        db,
+        period_type=period_type,
+        windows=prev_windows,
+        repository_id=repository_id,
     )
 
     cur = _aggregate_rows(rows)
     prev = _aggregate_rows(prev_rows)
+
+    combined_start = min(w.period_start for w in current_windows)
+    combined_end = max(w.period_end for w in current_windows)
 
     dep = cur["deployment_freq"]
     dep_p = prev["deployment_freq"]
@@ -373,8 +385,8 @@ def build_current_metrics_response(
             performance_level=mttr_level,
         ),
         overall_performance_level=overall_pl,
-        period_start=window.period_start,
-        period_end=window.period_end,
+        period_start=combined_start,
+        period_end=combined_end,
         repository_count=repo_count,
         generated_at=gen_at,
         mttr_alpha=MetricValue(
@@ -435,10 +447,10 @@ def build_history_response(
     data: list[HistoryDataPoint] = []
     for period_start, period_end in slice_:
         w = _Window(period_start=period_start, period_end=period_end)
-        rows = _load_snapshots_for_window(
+        rows = _load_snapshots_for_windows(
             db,
             period_type=period_type.value,
-            window=w,
+            windows=[w],
             repository_id=repository_id,
         )
         agg = _aggregate_rows(rows)

@@ -6,7 +6,7 @@ import { MetricCard } from "./MetricCard";
 const METRICS = [
   {
     key: "deployment_frequency",
-    label: "Deploys / Day",
+    label: "Deployment Frequency",
     icon: "rocket_launch",
   },
   {

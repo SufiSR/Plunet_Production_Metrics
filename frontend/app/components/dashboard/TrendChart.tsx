@@ -20,7 +20,7 @@ import type { MetricDataPoint } from "@/types/api";
 type ActiveMetric = "deployment_frequency" | "lead_time_for_changes" | "change_failure_rate" | "mttr_alpha";
 
 const METRIC_OPTIONS: { key: ActiveMetric; label: string }[] = [
-  { key: "deployment_frequency",    label: "Deploy Freq." },
+  { key: "deployment_frequency",    label: "Deployment Frequency" },
   { key: "lead_time_for_changes",   label: "Lead Time" },
   { key: "change_failure_rate",     label: "Failure Rate" },
   { key: "mttr_alpha",              label: "MTTR Alpha" },
@@ -63,7 +63,7 @@ function formatAxisDate(dateStr: string): string {
 }
 
 const METRIC_UNITS: Record<ActiveMetric, string> = {
-  deployment_frequency:  "dep/day",
+  deployment_frequency:  "dep/week",
   lead_time_for_changes: "h",
   change_failure_rate:   "%",
   mttr_alpha:            "min",

@@ -17,8 +17,8 @@ export const METRIC_EXPLANATIONS: Record<string, MetricExplanation> = {
     key: "deployment_frequency",
     title: "Deployment Frequency",
     description:
-      "How often the team deploys code to production. Higher is better. Elite teams deploy multiple times per day; low performers deploy less than once per month.",
-    unitLabel: "deploys / day",
+      "How often the team deploys code to production, displayed as a weekly rate. Higher is better. While elite DORA teams deploy daily, a healthy rate for low-volume teams is 1+ deploy per week.",
+    unitLabel: "deploys / week",
     doraThresholds: {
       elite: "Multiple times per day",
       high: "Once per day to once per week",
