@@ -41,6 +41,9 @@ export function MetricGrid() {
           isLoading={isLoading}
           isError={isError}
           generatedAt={data?.generated_at}
+          leadTimeDiagnostics={
+            key === "lead_time_for_changes" ? data?.lead_time_diagnostics : undefined
+          }
         />
       ))}
     </div>

@@ -150,6 +150,8 @@ def test_latest_window_and_load_snapshots() -> None:
                 mttr_minutes=None,
                 mttr_alpha_minutes=45,
                 lead_post_production_median_minutes=None,
+                lead_time_sample_count=7,
+                lead_time_match_counts={"matched": 5, "first_commit_missing": 2},
                 created_at=_utc_ts(2026, 4, 13),
             )
         )
@@ -159,13 +161,16 @@ def test_latest_window_and_load_snapshots() -> None:
         assert win is not None
         assert win.period_end == date(2026, 4, 13)
 
-        rows = mps._load_snapshots_for_window(
-            db, period_type="WEEK", window=win, repository_id=None
+        rows = mps._load_snapshots_for_windows(
+            db, period_type="WEEK", windows=[win], repository_id=None
         )
         assert len(rows) == 1
         agg = mps._aggregate_rows(rows)
         assert agg["deployment_freq"] == 1.0
         assert agg["lead_time_minutes"] == 60
+        assert agg["lead_time_sample_count"] == 7
+        assert agg["lead_time_match_counts"]["matched"] == 5
+        assert agg["lead_time_match_counts"]["first_commit_missing"] == 2
 
 
 def test_max_generated_at_uses_now_when_no_timestamps() -> None:
@@ -213,6 +218,8 @@ def test_build_current_metrics_response_with_week_trends_and_repo_filter() -> No
                     mttr_minutes=None,
                     mttr_alpha_minutes=200,
                     lead_post_production_median_minutes=None,
+                    lead_time_sample_count=5,
+                    lead_time_match_counts={"matched": 4, "first_commit_missing": 1},
                     created_at=_utc_ts(2026, 4, 13),
                 )
             )
@@ -241,6 +248,9 @@ def test_build_current_metrics_response_with_week_trends_and_repo_filter() -> No
         assert agg_all.lead_time.value == 100.0
         assert agg_all.release_wait_time is not None
         assert agg_all.release_wait_time.value == 120.0
+        assert agg_all.lead_time_diagnostics is not None
+        assert agg_all.lead_time_diagnostics.sample_count >= 10
+        assert agg_all.lead_time_diagnostics.match_counts.get("matched", 0) >= 8
 
         one = mps.build_current_metrics_response(db, repository_id=1, period_type="WEEK")
         assert one.repository_count == 1

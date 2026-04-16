@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -37,6 +37,8 @@ class MetricSnapshot(Base):
     mttr_minutes: Mapped[int | None]
     mttr_alpha_minutes: Mapped[int | None]
     lead_post_production_median_minutes: Mapped[int | None]
+    lead_time_sample_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lead_time_match_counts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -21,6 +21,7 @@ export interface AdminConfigResponse {
   gitlab_token_hint: string | null;
   gitlab_project_paths: string[];
   target_branches: string[];
+  additional_merge_target_branches: string[];
   non_customer_release_markers: string[];
   jira_url: string;
   jira_username: string;
@@ -41,6 +42,7 @@ export interface AdminConfigPatch {
   gitlab_token?: string;
   gitlab_project_paths?: string[];
   target_branches?: string[];
+  additional_merge_target_branches?: string[];
   non_customer_release_markers?: string[];
   jira_url?: string;
   jira_username?: string;

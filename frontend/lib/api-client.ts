@@ -1,7 +1,12 @@
 import type {
+  CustomerReleaseDrilldownListResponse,
+  FailedCustomerReleaseDrilldownListResponse,
   MetricsCurrentResponse,
   MetricsHistoryResponse,
+  ReleaseMergeRequestListResponse,
+  ReleaseProductionBugListResponse,
   RepositoriesResponse,
+  ReleaseTimelineResponse,
   SyncStatusResponse,
   PeriodType,
 } from "@/types/api";
@@ -92,12 +97,24 @@ function normalizeMetricsCurrent(raw: any, period: PeriodType): MetricsCurrentRe
     lead_time_for_changes: mapMetric(raw?.lead_time ?? raw?.mean_lead_time, "lead"),
     change_failure_rate: mapMetric(raw?.change_failure_rate, "cfr"),
     mttr_alpha: mapMetric(raw?.mttr_alpha ?? raw?.mttr, "mttr"),
+    lead_time_diagnostics: raw?.lead_time_diagnostics ?? null,
   };
+}
+
+function _historyDateKey(iso: string): number {
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Backend returns periods newest-first; charts read best oldest → newest on the X axis. */
+function _sortHistoryPointsChronologically<T extends { date: string }>(points: T[]): T[] {
+  return [...points].sort((a, b) => _historyDateKey(a.date) - _historyDateKey(b.date));
 }
 
 function normalizeMetricsHistory(raw: any, period: PeriodType): MetricsHistoryResponse {
   if (raw && "data_points" in raw) {
-    return raw as MetricsHistoryResponse;
+    const typed = raw as MetricsHistoryResponse;
+    return { ...typed, data_points: _sortHistoryPointsChronologically(typed.data_points) };
   }
   const points = Array.isArray(raw?.data)
     ? raw.data.map((item: any) => ({
@@ -109,6 +126,10 @@ function normalizeMetricsHistory(raw: any, period: PeriodType): MetricsHistoryRe
         lead_time_for_changes:
           typeof item?.lead_time_minutes === "number"
             ? item.lead_time_minutes / 60.0
+            : null,
+        lead_time_sample_count:
+          typeof item?.lead_time_sample_count === "number"
+            ? item.lead_time_sample_count
             : null,
         change_failure_rate:
           typeof item?.change_failure_rate === "number"
@@ -122,7 +143,7 @@ function normalizeMetricsHistory(raw: any, period: PeriodType): MetricsHistoryRe
     : [];
   return {
     period,
-    data_points: points,
+    data_points: _sortHistoryPointsChronologically(points),
   };
 }
 
@@ -156,4 +177,71 @@ export const apiClient = {
   getSyncStatus: () => request<any>("/sync/status").then(normalizeSyncStatus),
 
   getRepositories: () => request<RepositoriesResponse>("/repositories"),
+
+  getReleaseTimeline: () =>
+    request<ReleaseTimelineResponse>("/metrics/releases/timeline?min_major=8&limit=3000"),
+
+  getReleaseDrilldown: (opts: {
+    page?: number;
+    size?: number;
+    repositoryId?: number | null;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 20));
+    if (opts.repositoryId != null && opts.repositoryId !== undefined) {
+      p.set("repository_id", String(opts.repositoryId));
+    }
+    return request<CustomerReleaseDrilldownListResponse>(
+      `/metrics/releases/customer/drilldown?${p.toString()}`,
+    );
+  },
+
+  getReleaseMergeRequests: (opts: {
+    repositoryId: number;
+    tagName: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("repository_id", String(opts.repositoryId));
+    p.set("tag_name", opts.tagName);
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 50));
+    return request<ReleaseMergeRequestListResponse>(
+      `/metrics/releases/customer/merge-requests?${p.toString()}`,
+    );
+  },
+
+  getFailedReleaseDrilldown: (opts: {
+    page?: number;
+    size?: number;
+    repositoryId?: number | null;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 20));
+    if (opts.repositoryId != null && opts.repositoryId !== undefined) {
+      p.set("repository_id", String(opts.repositoryId));
+    }
+    return request<FailedCustomerReleaseDrilldownListResponse>(
+      `/metrics/releases/customer/failed-drilldown?${p.toString()}`,
+    );
+  },
+
+  getFailedReleaseIssues: (opts: {
+    repositoryId: number;
+    tagName: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("repository_id", String(opts.repositoryId));
+    p.set("tag_name", opts.tagName);
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 50));
+    return request<ReleaseProductionBugListResponse>(
+      `/metrics/releases/customer/failed/issues?${p.toString()}`,
+    );
+  },
 };

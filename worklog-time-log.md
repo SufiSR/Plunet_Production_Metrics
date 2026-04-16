@@ -1,3 +1,18 @@
+| DEVOPS-488 | jira-update | 2026-04-16 15:49 | OPEN | — | Commit and push workspace changes to GitLab |
+| DEVOPS-503 | jira-update | 2026-04-16 15:41 | 2026-04-16 15:47 | 6m | Created DEVOPS-503 under DEVOPS-488 (Confluence, assignee); booked 5 worklogs (50m) from worklog-time-log |
+| DEVOPS-429 | validation | 2026-04-16 15:36 | 2026-04-16 15:43 | 7m | Docker compose build --pull + up -d; db/backend/frontend healthy |
+| DEVOPS-429 | implementation | 2026-04-16 15:30 | 2026-04-16 15:38 | 8m | CFR semantics: count only post-production bugs (exclude pre-production memo); shared predicate; tests + UI copy |
+| DEVOPS-429 | implementation | 2026-04-16 15:18 | 2026-04-16 15:34 | 16m | CFR drill-down: backend failed-release + issues endpoints/schemas/service/tests; frontend panel + API/hooks/query-keys; TrendOverviewSection wiring |
+| DEVOPS-429 | investigation | 2026-04-16 18:00 | 2026-04-16 18:12 | 12m | Assessed feasibility + implementation approach for CFR drill-down (failed customer releases → linked Jira issues) |
+| DEVOPS-429 | investigation | 2026-04-16 17:30 | 2026-04-16 17:37 | 7m | Explained which data is used for Change Failure Rate (CFR) |
+| DEVOPS-429 | implementation | 2026-04-16 09:50 | 2026-04-16 10:07 | 17m | Implemented deployment swimlane timeline: backend release timeline endpoint + schema/tests, frontend API/hook wiring, new dashboard/embed swimlane component with customer-release emphasis and detail panel |
+| DEVOPS-429 | investigation | 2026-04-16 12:15 | 2026-04-16 12:18 | 3m | Explained lead-time trend gaps vs customer releases; sorted metrics history chronologically in api-client for trend/sparkline charts |
+| DEVOPS-429 | implementation | 2026-04-16 14:05 | 2026-04-16 14:11 | 6m | Generated sample dual-series lead-time mockup image and copied to docs/ |
+| DEVOPS-429 | implementation | 2026-04-16 15:20 | 2026-04-16 15:26 | 6m | Generated release→MR drill-down UI mockup and saved under docs/ |
+| DEVOPS-429 | implementation | 2026-04-16 16:00 | 2026-04-16 16:45 | 45m | Release drill-down: paginated customer releases + MR API, frontend panel with repo filter and MR pagination, aligned RepositoriesResponse types |
+| DEVOPS-429 | implementation | 2026-04-16 14:50 | 2026-04-16 14:54 | 4m | Lead-time diagnostics follow-up: release drill-down compare/Jira summary UI, restore latest-vs-previous window in metrics_public_service, fix MR list test dates, full pytest + docker compose build |
+| DEVOPS-429 | validation | 2026-04-16 14:56 | 2026-04-16 14:58 | 2m | Docker Compose up --build -d; db/backend/frontend healthy on 5433/8000/3000 |
+| DEVOPS-502 | jira-update | 2026-04-16 15:06 | 2026-04-16 15:07 | 1m | Created Improvement Subtask under DEVOPS-488: description + Solution (ADF), Confluence component, assignee; booked 6m engineering worklog from DEVOPS-429 worklog-time-log entries |
 # Worklog Time Log
 
 Use this file as the durable source for Jira worklog entries.

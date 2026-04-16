@@ -75,6 +75,21 @@ def test_merged_gitlab_settings_default_markers_and_branches() -> None:
     assert "rc" in markers
 
 
+def test_merged_gitlab_settings_additional_branches_deduped() -> None:
+    cfg = ConfigurationSchema.model_validate(
+        {
+            "gitlab": {
+                "project_paths": ["a/b"],
+                "target_branches": ["10.x", "master"],
+                "additional_merge_target_branches": ["Patch10_bm", "10.x", ""],
+                "non_customer_release_markers": [],
+            }
+        }
+    )
+    _paths, branches, _markers = _merged_gitlab_settings(cfg)
+    assert branches == ["10.x", "master", "Patch10_bm"]
+
+
 def test_customer_release_false_for_configured_markers() -> None:
     marker_re = _markers_regex(["rc", "beta"])
     assert _is_customer_release("v10.1.0-rc.1", marker_re) is False
@@ -244,21 +259,26 @@ def test_list_commit_tag_refs_paginates() -> None:
 def test_list_merged_merge_requests_sends_updated_after_and_filters_by_merged_at() -> None:
     client = GitLabTagsClient(base_url="https://gitlab.example.com", token="dummy")
     captured_params: list[dict[str, object]] = []
+    now = datetime.now(timezone.utc)
+    recent_merged = (now - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent_created = (now - timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stale_merged = (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stale_created = (now - timedelta(days=31)).strftime("%Y-%m-%dT%H:%M:%SZ")
     responses = [
         [
             {
                 "id": 1,
                 "iid": 1,
                 "target_branch": "main",
-                "created_at": "2026-04-01T08:00:00Z",
-                "merged_at": "2026-04-01T10:00:00Z",
+                "created_at": recent_created,
+                "merged_at": recent_merged,
             },
             {
                 "id": 2,
                 "iid": 2,
                 "target_branch": "main",
-                "created_at": "2026-03-01T08:00:00Z",
-                "merged_at": "2026-03-01T09:00:00Z",
+                "created_at": stale_created,
+                "merged_at": stale_merged,
             },
         ]
     ]

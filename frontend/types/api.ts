@@ -16,6 +16,13 @@ export interface MetricValue {
   secondary_text?: string;
 }
 
+/** Backend `lead_time_diagnostics` — MR-based DORA lead time transparency. */
+export interface LeadTimeDiagnostics {
+  definition: string;
+  sample_count: number;
+  match_counts: Record<string, number>;
+}
+
 export interface MetricsCurrentResponse {
   generated_at: string; // ISO 8601
   period_label: string;
@@ -28,6 +35,7 @@ export interface MetricsCurrentResponse {
     logged_hours: number | null;
     calendar_days: number | null;
   };
+  lead_time_diagnostics?: LeadTimeDiagnostics | null;
 }
 
 // ── Metrics history ──────────────────────────────────────────────────────────
@@ -36,6 +44,8 @@ export interface MetricDataPoint {
   date: string; // ISO 8601 date
   deployment_frequency: number | null;
   lead_time_for_changes: number | null;
+  /** MR count summed across repos for that period (lead time sample). */
+  lead_time_sample_count?: number | null;
   change_failure_rate: number | null;
   mttr_alpha: number | null;
 }
@@ -92,17 +102,114 @@ export interface SyncStatusResponse {
 
 // ── Repositories ─────────────────────────────────────────────────────────────
 
-export interface RepositoryMetrics {
-  repository_path: string;
-  deployment_frequency: number | null;
-  lead_time_for_changes: number | null;
-  change_failure_rate: number | null;
-  mttr_alpha: number | null;
-  dora_level: DoraLevel;
+export interface RepositoryListItem {
+  id: number;
+  gitlab_id: number;
+  name: string;
+  path: string;
+  default_branch: string;
+  active: boolean;
 }
 
 export interface RepositoriesResponse {
-  repositories: RepositoryMetrics[];
+  repositories: RepositoryListItem[];
+  total: number;
+}
+
+export interface ReleaseTimelineItem {
+  repository_id: number;
+  repository_path: string;
+  tag_name: string;
+  committed_at: string;
+  customer_release: boolean;
+  version_major: number | null;
+  version_minor: number | null;
+  version_patch: number | null;
+}
+
+export interface ReleaseTimelineResponse {
+  items: ReleaseTimelineItem[];
+  total: number;
+}
+
+export interface OffsetPagination {
+  page: number;
+  size: number;
+  total_elements: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface CustomerReleaseDrilldownItem {
+  repository_id: number;
+  repository_path: string;
+  tag_name: string;
+  committed_at: string;
+  version_major: number | null;
+  version_minor: number | null;
+  version_patch: number | null;
+  lane: string;
+  mr_count: number;
+}
+
+export interface CustomerReleaseDrilldownListResponse {
+  items: CustomerReleaseDrilldownItem[];
+  pagination: OffsetPagination;
+}
+
+export interface ReleaseMergeRequestRow {
+  gitlab_mr_id: number;
+  title: string | null;
+  target_branch: string;
+  merged_at: string;
+  lead_time_hours: number | null;
+  release_wait_time_hours: number | null;
+  jira_key: string | null;
+}
+
+export interface ReleaseMergeRequestListResponse {
+  repository_id: number;
+  tag_name: string;
+  items: ReleaseMergeRequestRow[];
+  pagination: OffsetPagination;
+  previous_customer_tag?: string | null;
+  gitlab_compare_url?: string | null;
+  mr_with_jira_key_count?: number;
+}
+
+export interface FailedCustomerReleaseDrilldownItem {
+  repository_id: number;
+  repository_path: string;
+  tag_name: string;
+  committed_at: string;
+  version_major: number | null;
+  version_minor: number | null;
+  version_patch: number | null;
+  lane: string;
+  mr_count: number;
+  issue_count: number;
+}
+
+export interface FailedCustomerReleaseDrilldownListResponse {
+  items: FailedCustomerReleaseDrilldownItem[];
+  pagination: OffsetPagination;
+}
+
+export interface ReleaseProductionBugRow {
+  jira_key: string;
+  summary: string | null;
+  status: string | null;
+  priority: string | null;
+  healthmemo: string | null;
+  jira_browse_url: string | null;
+}
+
+export interface ReleaseProductionBugListResponse {
+  repository_id: number;
+  tag_name: string;
+  items: ReleaseProductionBugRow[];
+  pagination: OffsetPagination;
 }
 
 // ── Error response ───────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ from app.models.bug_release import BugRelease
 from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.release import Release
+from app.services.cfr_bug_filter import cfr_eligible_production_bug_predicate
 
 PERIOD_TYPES = ("WEEK", "MONTH", "QUARTER")
 PERFORMANCE_LEVELS = ("LOW", "MEDIUM", "HIGH", "ELITE")
@@ -28,6 +29,8 @@ class MetricValues:
     mttr_minutes: int | None
     mttr_alpha_minutes: int | None
     lead_post_production_median_minutes: int | None
+    lead_time_sample_count: int
+    lead_time_match_counts: dict[str, int]
 
 
 def classify_performance_level(
@@ -110,6 +113,12 @@ def calculate_period_metrics(
         end_dt=end_dt,
         repository_id=repository_id,
     )
+    lt_sample, lt_counts = calculate_lead_time_diagnostics(
+        session,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        repository_id=repository_id,
+    )
     return MetricValues(
         deployment_freq=deployment_freq,
         lead_time_minutes=lead_time_minutes,
@@ -118,6 +127,8 @@ def calculate_period_metrics(
         mttr_minutes=mttr_minutes,
         mttr_alpha_minutes=mttr_alpha_minutes,
         lead_post_production_median_minutes=lead_post_production_median_minutes,
+        lead_time_sample_count=lt_sample,
+        lead_time_match_counts=lt_counts,
     )
 
 
@@ -166,6 +177,43 @@ def calculate_lead_time_minutes(
         .scalars()
         .all()
     )
+
+
+def calculate_lead_time_diagnostics(
+    session: Session,
+    *,
+    start_dt: datetime,
+    end_dt: datetime,
+    repository_id: int,
+) -> tuple[int, dict[str, int]]:
+    """MR counts in the lead-time window.
+
+    Sample used for median plus status breakdown (all rows with tag date).
+    """
+    sample = int(
+        session.execute(
+            select(func.count(MergeRequest.id)).where(
+                MergeRequest.repository_id == repository_id,
+                MergeRequest.first_customer_tag_date.is_not(None),
+                MergeRequest.first_customer_tag_date >= start_dt,
+                MergeRequest.first_customer_tag_date < end_dt,
+                MergeRequest.lead_time_hours.is_not(None),
+            )
+        ).scalar_one()
+    )
+    rows = session.execute(
+        select(MergeRequest.lead_time_match_status, func.count(MergeRequest.id)).where(
+            MergeRequest.repository_id == repository_id,
+            MergeRequest.first_customer_tag_date.is_not(None),
+            MergeRequest.first_customer_tag_date >= start_dt,
+            MergeRequest.first_customer_tag_date < end_dt,
+        ).group_by(MergeRequest.lead_time_match_status)
+    ).all()
+    counts: dict[str, int] = {}
+    for status, cnt in rows:
+        key = str(status).strip() if status is not None else "unknown"
+        counts[key] = int(cnt)
+    return sample, counts
 
 
 def calculate_release_wait_minutes(
@@ -218,7 +266,7 @@ def calculate_change_failure_rate(
             .join(ProductionBug, ProductionBug.id == BugRelease.bug_id)
             .where(
                 BugRelease.release_id.in_(eligible_release_ids),
-                ProductionBug.healthy.is_(True),
+                cfr_eligible_production_bug_predicate(),
             )
         )
         .scalars()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -13,6 +14,7 @@ from app.schemas.metrics import (
     CurrentMetricsResponse,
     HistoryDataPoint,
     HistoryResponse,
+    LeadTimeDiagnostics,
     MetricValue,
     Pagination,
     PerformanceLevel,
@@ -141,6 +143,54 @@ class _Window:
     period_end: date
 
 
+def _last_day_of_month(d: date) -> date:
+    if d.month == 12:
+        first_next = date(d.year + 1, 1, 1)
+    else:
+        first_next = date(d.year, d.month + 1, 1)
+    return first_next - timedelta(days=1)
+
+
+def _previous_window(w: _Window, period_type: str) -> _Window:
+    """Calendar-aligned previous period (used by tests and trend baseline)."""
+    pt = period_type.upper()
+    if pt == "WEEK":
+        return _Window(
+            w.period_start - timedelta(days=7),
+            w.period_end - timedelta(days=7),
+        )
+    if pt == "MONTH":
+        y, m = w.period_start.year, w.period_start.month
+        if m == 1:
+            y, m = y - 1, 12
+        else:
+            m -= 1
+        start = date(y, m, 1)
+        return _Window(start, _last_day_of_month(start))
+    if pt == "QUARTER":
+        sm = w.period_start.month
+        sy = w.period_start.year
+        if sm == 1:
+            return _Window(date(sy - 1, 10, 1), date(sy - 1, 12, 31))
+        if sm == 4:
+            return _Window(date(sy, 1, 1), date(sy, 3, 31))
+        if sm == 7:
+            return _Window(date(sy, 4, 1), date(sy, 6, 30))
+        if sm == 10:
+            return _Window(date(sy, 7, 1), date(sy, 9, 30))
+        raise ValueError(f"Unsupported quarter window start month: {sm}")
+    raise ValueError(f"Unsupported period_type for _previous_window: {period_type!r}")
+
+
+def _latest_window(
+    db: Session, *, period_type: str, repository_id: int | None
+) -> _Window | None:
+    recent = _recent_windows(
+        db, period_type=period_type, repository_id=repository_id, limit=1
+    )
+    return recent[0] if recent else None
+
+
 def _recent_windows(
     db: Session,
     *,
@@ -202,18 +252,43 @@ def _load_snapshots_for_windows(
     return list(db.execute(q).scalars().all())
 
 
-def _aggregate_rows(rows: list[MetricSnapshot]) -> dict[str, float | int | None]:
+def _merge_lead_time_match_counts(rows: list[MetricSnapshot]) -> dict[str, int]:
+    merged: dict[str, int] = {}
+    for r in rows:
+        raw = r.lead_time_match_counts
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        if not isinstance(raw, dict):
+            continue
+        for k, v in raw.items():
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int):
+                merged[str(k)] = merged.get(str(k), 0) + v
+            elif isinstance(v, float) and v == int(v):
+                merged[str(k)] = merged.get(str(k), 0) + int(v)
+    return merged
+
+
+def _aggregate_rows(rows: list[MetricSnapshot]) -> dict[str, float | int | None | dict[str, int]]:
     dep = _mean_float_from_decimal([r.deployment_freq for r in rows])
     lead = _median_int([r.lead_time_minutes for r in rows])
     rw = _median_int([r.release_wait_median_minutes for r in rows])
     cfr = _mean_float_from_decimal([r.change_failure_rate for r in rows])
     mttr_alpha = _median_int([r.mttr_alpha_minutes for r in rows])
+    lt_samples = sum(int(r.lead_time_sample_count or 0) for r in rows)
+    lt_counts = _merge_lead_time_match_counts(rows)
     return {
         "deployment_freq": dep,
         "lead_time_minutes": lead,
         "release_wait_median_minutes": rw,
         "change_failure_rate": cfr,
         "mttr_alpha_minutes": mttr_alpha,
+        "lead_time_sample_count": lt_samples,
+        "lead_time_match_counts": lt_counts,
     }
 
 
@@ -230,20 +305,12 @@ def build_current_metrics_response(
     repository_id: int | None = None,
     period_type: str = "WEEK",
 ) -> CurrentMetricsResponse:
-    if period_type == "WEEK":
-        window_count = 4
-    elif period_type == "MONTH":
-        window_count = 3
-    elif period_type == "QUARTER":
-        window_count = 4
-    else:
-        window_count = 1
-
+    # Latest snapshot window vs the immediately prior window (repo rows aggregated per window).
     recent = _recent_windows(
         db,
         period_type=period_type,
         repository_id=repository_id,
-        limit=window_count * 2
+        limit=2,
     )
 
     if not recent:
@@ -266,10 +333,11 @@ def build_current_metrics_response(
             generated_at=now,
             mttr_alpha=None,
             release_wait_time=None,
+            lead_time_diagnostics=None,
         )
 
-    current_windows = recent[:window_count]
-    prev_windows = recent[window_count:]
+    current_windows = [recent[0]]
+    prev_windows = [recent[1]] if len(recent) > 1 else []
 
     rows = _load_snapshots_for_windows(
         db,
@@ -351,6 +419,15 @@ def build_current_metrics_response(
 
     gen_at = _max_generated_at(rows)
 
+    lt_counts_raw = cur.get("lead_time_match_counts")
+    lt_match_counts: dict[str, int] = (
+        dict(lt_counts_raw) if isinstance(lt_counts_raw, dict) else {}
+    )
+    lead_diag = LeadTimeDiagnostics(
+        sample_count=int(cur.get("lead_time_sample_count") or 0),
+        match_counts=lt_match_counts,
+    )
+
     return CurrentMetricsResponse(
         deployment_frequency=MetricValue(
             value=dep,
@@ -409,6 +486,7 @@ def build_current_metrics_response(
                 else None
             ),
         ),
+        lead_time_diagnostics=lead_diag,
     )
 
 
@@ -465,12 +543,14 @@ def build_history_response(
             cfr=cfr,
             mttr_alpha=mttr_alpha,
         )
+        lt_sc = int(agg.get("lead_time_sample_count") or 0) if agg else 0
         data.append(
             HistoryDataPoint(
                 period_start=period_start,
                 period_end=period_end,
                 deployment_frequency=dep,
                 lead_time_minutes=lead,
+                lead_time_sample_count=lt_sc,
                 change_failure_rate=cfr,
                 mttr_minutes=mttr_alpha,
                 mttr_alpha_minutes=mttr_alpha,

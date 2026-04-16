@@ -13,13 +13,11 @@ import {
   type TooltipProps,
 } from "recharts";
 import { useMetricsHistory } from "@/lib/hooks";
-import { useUIStore } from "@/lib/store";
+import { useUIStore, type TrendOverviewMetric } from "@/lib/store";
 import { getChartColors } from "@/lib/chart-colors";
 import type { MetricDataPoint } from "@/types/api";
 
-type ActiveMetric = "deployment_frequency" | "lead_time_for_changes" | "change_failure_rate" | "mttr_alpha";
-
-const METRIC_OPTIONS: { key: ActiveMetric; label: string }[] = [
+const METRIC_OPTIONS: { key: TrendOverviewMetric; label: string }[] = [
   { key: "deployment_frequency",    label: "Deployment Frequency" },
   { key: "lead_time_for_changes",   label: "Lead Time" },
   { key: "change_failure_rate",     label: "Failure Rate" },
@@ -62,18 +60,30 @@ function formatAxisDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-const METRIC_UNITS: Record<ActiveMetric, string> = {
+const METRIC_UNITS: Record<TrendOverviewMetric, string> = {
   deployment_frequency:  "dep/week",
   lead_time_for_changes: "h",
   change_failure_rate:   "%",
   mttr_alpha:            "min",
 };
 
+const METRIC_FOOTNOTES: Record<TrendOverviewMetric, string> = {
+  deployment_frequency:
+    "Customer-release tags per week. Swimlane below lists release events on the timeline.",
+  lead_time_for_changes:
+    "MR-based DORA lead time: earliest commit on each merged MR → first customer tag. Configure extra merge branches in Admin → GitLab if patch lines are missing.",
+  change_failure_rate:
+    "Share of customer releases in the window with at least one linked healthy production bug.",
+  mttr_alpha:
+    "Median minutes from bug creation to first customer release containing the fix (Critical/Blocker scope per config).",
+};
+
 export function TrendChart() {
   const period = useUIStore((s) => s.period);
+  const activeMetric = useUIStore((s) => s.trendOverviewMetric);
+  const setTrendOverviewMetric = useUIStore((s) => s.setTrendOverviewMetric);
   const { data, isLoading } = useMetricsHistory();
   const { resolvedTheme } = useTheme();
-  const [activeMetric, setActiveMetric] = useState<ActiveMetric>("deployment_frequency");
   const [colors, setColors] = useState<ChartColors>({
     primary:     "#4648d4",
     grid:        "#edeeef",
@@ -106,6 +116,9 @@ export function TrendChart() {
               : "Yearly"}{" "}
             · {METRIC_OPTIONS.find((m) => m.key === activeMetric)?.label}
           </p>
+          <p className="text-[10px] text-on-surface-variant font-editorial leading-snug max-w-xl mt-2">
+            {METRIC_FOOTNOTES[activeMetric]}
+          </p>
         </div>
 
         {/* Metric switcher */}
@@ -113,7 +126,7 @@ export function TrendChart() {
           {METRIC_OPTIONS.map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => setActiveMetric(key)}
+              onClick={() => setTrendOverviewMetric(key)}
               className={[
                 "px-3 py-1 text-[10px] font-editorial font-bold rounded-md transition-all duration-150 uppercase tracking-wider",
                 activeMetric === key

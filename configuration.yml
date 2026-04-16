@@ -20,6 +20,8 @@ gitlab:
     - 9.x
     - 10.x
     - 11.x
+  # Extra lines where merged MRs should be ingested (patch/customer branches). Duplicates vs target_branches are ignored.
+  additional_merge_target_branches: []
   non_customer_release_markers:
     - rc
     - beta

@@ -19,6 +19,13 @@ class GitLabConfig(BaseModel):
         description="GitLab URL path after host (e.g. dev/plunet for https://gitlab.plunet.com/dev/plunet)",
     )
     target_branches: list[str] = Field(default_factory=lambda: ["master", "9.x", "10.x", "11.x"])
+    additional_merge_target_branches: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Extra target branches for merged MR ingestion (patch/customer lines). "
+            "Appended after target_branches; duplicates removed."
+        ),
+    )
     non_customer_release_markers: list[str] = Field(default_factory=lambda: ["rc", "beta"])
 
 

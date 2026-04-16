@@ -98,19 +98,29 @@ def _is_customer_release(tag_name: str | None, marker_re: re.Pattern[str]) -> bo
     return marker_re.search(tag_name) is None
 
 
+def _all_merge_target_branches(defaults: ConfigurationSchema) -> list[str]:
+    primary = [b.strip() for b in defaults.gitlab.target_branches if b.strip()]
+    extra = [b.strip() for b in defaults.gitlab.additional_merge_target_branches if b.strip()]
+    if not primary:
+        primary = list(_DEFAULT_TARGET_BRANCHES)
+    seen: set[str] = set()
+    out: list[str] = []
+    for b in primary + extra:
+        if b not in seen:
+            seen.add(b)
+            out.append(b)
+    return out
+
+
 def _merged_gitlab_settings(
     defaults: ConfigurationSchema,
 ) -> tuple[list[str], list[str], list[str]]:
     project_paths = list(defaults.gitlab.project_paths)
-    target_branches = [
-        branch.strip() for branch in defaults.gitlab.target_branches if branch.strip()
-    ]
+    target_branches = _all_merge_target_branches(defaults)
     markers = [m.strip().lower() for m in defaults.gitlab.non_customer_release_markers if m.strip()]
 
     if not markers:
         markers = list(_DEFAULT_MARKERS)
-    if not target_branches:
-        target_branches = list(_DEFAULT_TARGET_BRANCHES)
     return project_paths, target_branches, markers
 
 

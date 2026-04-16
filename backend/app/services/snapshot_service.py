@@ -93,6 +93,8 @@ def refresh_snapshots(
                     mttr_minutes=values.mttr_minutes,
                     mttr_alpha_minutes=values.mttr_alpha_minutes,
                     lead_post_production_median_minutes=values.lead_post_production_median_minutes,
+                    lead_time_sample_count=values.lead_time_sample_count,
+                    lead_time_match_counts=values.lead_time_match_counts or None,
                 )
             )
             written += 1

@@ -34,6 +34,24 @@ class MetricValue(BaseModel):
     performance_level: PerformanceLevel | None = None
 
 
+class LeadTimeDiagnostics(BaseModel):
+    """Transparency for MR-based DORA lead time (aggregated across snapshot rows in the window)."""
+
+    definition: str = (
+        "Median lead time uses merged MRs only: earliest commit on the MR to first customer-release "
+        "tag containing the merge result. MRs are ingested from configured target branches plus any "
+        "additional merge branches."
+    )
+    sample_count: int = Field(
+        ge=0,
+        description="Count of MRs with a numeric lead_time in the underlying snapshot cells (summed).",
+    )
+    match_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Merge rows in the window keyed by lead_time_match_status (summed across cells).",
+    )
+
+
 class CurrentMetricsResponse(BaseModel):
     deployment_frequency: MetricValue
     lead_time: MetricValue
@@ -46,6 +64,7 @@ class CurrentMetricsResponse(BaseModel):
     generated_at: datetime
     mttr_alpha: MetricValue | None = None
     release_wait_time: MetricValue | None = None
+    lead_time_diagnostics: LeadTimeDiagnostics | None = None
 
 
 class PerformanceLevels(BaseModel):
@@ -61,6 +80,7 @@ class HistoryDataPoint(BaseModel):
     period_end: date
     deployment_frequency: float | None
     lead_time_minutes: int | None
+    lead_time_sample_count: int | None = None
     change_failure_rate: float | None
     mttr_minutes: int | None
     mttr_alpha_minutes: int | None = None

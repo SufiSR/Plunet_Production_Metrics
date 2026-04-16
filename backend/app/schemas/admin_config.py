@@ -9,6 +9,7 @@ class AdminConfigResponse(BaseModel):
     gitlab_token_hint: str | None
     gitlab_project_paths: list[str]
     target_branches: list[str]
+    additional_merge_target_branches: list[str]
     non_customer_release_markers: list[str]
     jira_url: str
     jira_username: str
@@ -29,6 +30,7 @@ class AdminConfigPatch(BaseModel):
     gitlab_token: str | None = None
     gitlab_project_paths: list[str] | None = None
     target_branches: list[str] | None = None
+    additional_merge_target_branches: list[str] | None = None
     non_customer_release_markers: list[str] | None = None
     jira_url: str | None = None
     jira_username: str | None = None

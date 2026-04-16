@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 import app.database as database
 from app.api.deps import get_db
 from app.models import Base
+from app.models.release import Release
+from app.models.repository import Repository
 
 
 @pytest.fixture
@@ -99,3 +102,39 @@ def test_sync_status_shape(public_client: TestClient) -> None:
     body = response.json()
     assert "sync_schedule_cron" in body
     assert "last_sync" in body
+
+
+def test_release_timeline_contains_release_events(public_client: TestClient) -> None:
+    with Session(database.get_engine()) as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="plunet",
+                path="dev/plunet",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.add(
+            Release(
+                id=1,
+                repository_id=1,
+                    tag_name="v10.2.3",
+                customer_release=True,
+                    version_major=10,
+                version_minor=2,
+                version_patch=3,
+                commit_sha="abc123abc123abc123abc123abc123abc123abc1",
+                committed_at=datetime(2026, 4, 10, 8, 30, tzinfo=timezone.utc),
+            )
+        )
+        db.commit()
+
+    response = public_client.get("/api/metrics/releases/timeline")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["tag_name"] == "v10.2.3"
+    assert body["items"][0]["customer_release"] is True
+    assert body["items"][0]["repository_path"] == "dev/plunet"

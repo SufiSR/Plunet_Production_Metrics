@@ -105,12 +105,22 @@ export function GitLabConfigSection({ config, patch, onPatch }: GitLabConfigSect
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <TagListInput
             id="target_branches"
-            label="Target Branches"
+            label="Primary target branches"
             values={
               (patch.target_branches ?? config.target_branches) as string[]
             }
-            helpText="Branches tracked for deployment frequency"
+            helpText="Main integration lines (e.g. master, 10.x). Used for merged MR ingestion and ordering."
             onChange={(vals) => onPatch({ target_branches: vals })}
+          />
+          <TagListInput
+            id="additional_merge_target_branches"
+            label="Additional merge branches"
+            values={
+              (patch.additional_merge_target_branches ??
+                config.additional_merge_target_branches) as string[]
+            }
+            helpText="Extra lines whose merged MRs are ingested (e.g. Patch10_*). Duplicates vs primary list are ignored."
+            onChange={(vals) => onPatch({ additional_merge_target_branches: vals })}
           />
           <TagListInput
             id="non_customer_release_markers"

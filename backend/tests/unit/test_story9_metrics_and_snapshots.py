@@ -67,6 +67,7 @@ def test_calculate_period_metrics_returns_expected_values() -> None:
                 id=10,
                 jira_key="BUG-1",
                 healthy=True,
+                healthmemo="post-production",
                 jira_created_at_valid=True,
                 priority="Critical",
                 created_at=_utc(2026, 4, 1),
@@ -119,6 +120,63 @@ def test_calculate_period_metrics_returns_expected_values() -> None:
     assert values.change_failure_rate == Decimal("0.5000")
     assert values.mttr_alpha_minutes == 180
     assert values.lead_post_production_median_minutes == 120
+
+
+def test_change_failure_rate_excludes_pre_production_classification() -> None:
+    """Pre-production bugs are internal QA; they must not mark a customer release as failed."""
+    with _session() as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=101,
+                name="repo",
+                path="ops/repo",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.flush()
+        db.add_all(
+            [
+                Release(
+                    id=1,
+                    repository_id=1,
+                    tag_name="v10.0.0",
+                    customer_release=True,
+                    commit_sha="a" * 40,
+                    committed_at=_utc(2026, 4, 6, 8, 0),
+                ),
+                Release(
+                    id=2,
+                    repository_id=1,
+                    tag_name="v10.0.1",
+                    customer_release=True,
+                    commit_sha="b" * 40,
+                    committed_at=_utc(2026, 4, 7, 8, 0),
+                ),
+            ]
+        )
+        db.add(
+            ProductionBug(
+                id=11,
+                jira_key="BUG-2",
+                healthy=True,
+                healthmemo="pre-production - parent is techsupport",
+                jira_created_at_valid=True,
+                created_at=_utc(2026, 4, 1),
+            )
+        )
+        db.flush()
+        db.add(BugRelease(bug_id=11, release_id=2))
+        db.commit()
+
+        rate = calculate_change_failure_rate(
+            db,
+            start_dt=_utc(2026, 4, 6),
+            end_dt=_utc(2026, 4, 8),
+            repository_id=1,
+        )
+    assert rate == Decimal("0")
 
 
 def test_change_failure_rate_handles_no_releases_without_division_by_zero() -> None:

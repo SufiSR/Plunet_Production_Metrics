@@ -113,6 +113,9 @@ def _apply_env_overrides(config: ConfigurationSchema) -> ConfigurationSchema:
     gitlab_target_branches = _split_csv(_env_text("GITLAB_TARGET_BRANCHES"))
     if gitlab_target_branches:
         config.gitlab.target_branches = gitlab_target_branches
+    gitlab_extra_branches = _split_csv(_env_text("GITLAB_ADDITIONAL_MERGE_TARGET_BRANCHES"))
+    if gitlab_extra_branches:
+        config.gitlab.additional_merge_target_branches = gitlab_extra_branches
     gitlab_markers = [
         item.lower() for item in _split_csv(_env_text("GITLAB_NON_CUSTOMER_RELEASE_MARKERS"))
     ]

@@ -48,6 +48,7 @@ def build_admin_config_response(db: Session) -> AdminConfigResponse:
         gitlab_token_hint=config_service.mask_secret_hint(runtime.gitlab_token or None),
         gitlab_project_paths=list(cfg.gitlab.project_paths),
         target_branches=list(cfg.gitlab.target_branches),
+        additional_merge_target_branches=list(cfg.gitlab.additional_merge_target_branches),
         non_customer_release_markers=list(cfg.gitlab.non_customer_release_markers),
         jira_url=cfg.jira.base_url,
         jira_username=_jira_username_for_display(settings_json),
@@ -106,6 +107,8 @@ def patch_admin_configuration(db: Session, patch: AdminConfigPatch) -> AdminConf
         gl["project_paths"] = data.pop("gitlab_project_paths")
     if "target_branches" in data:
         gl["target_branches"] = data.pop("target_branches")
+    if "additional_merge_target_branches" in data:
+        gl["additional_merge_target_branches"] = data.pop("additional_merge_target_branches")
     if "non_customer_release_markers" in data:
         gl["non_customer_release_markers"] = data.pop("non_customer_release_markers")
     if "jira_url" in data and data["jira_url"] is not None:
