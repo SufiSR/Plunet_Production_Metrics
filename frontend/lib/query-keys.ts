@@ -32,4 +32,26 @@ export const queryKeys = {
     page: number,
     size: number,
   ) => ["metrics", "releases", "customer", "failed", "issues", repositoryId, tagName, page, size] as const,
+
+  mttrAlphaSummary: (period: PeriodType) => ["metrics", "bugs", "mttr-alpha", "summary", period] as const,
+
+  mttrAlphaIncidents: (
+    period: PeriodType,
+    page: number,
+    size: number,
+    firstFixReleaseTag: string | null | undefined,
+  ) =>
+    [
+      "metrics",
+      "bugs",
+      "mttr-alpha",
+      "incidents",
+      period,
+      page,
+      size,
+      firstFixReleaseTag ?? "all",
+    ] as const,
+
+  mttrAlphaReleases: (period: PeriodType, page: number, size: number) =>
+    ["metrics", "bugs", "mttr-alpha", "releases", period, page, size] as const,
 } as const;

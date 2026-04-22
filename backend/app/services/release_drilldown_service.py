@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import quote
 
 from sqlalchemy import and_, func, select
@@ -70,6 +70,275 @@ class CustomerReleaseBugRow:
     status: str | None
     priority: str | None
     healthmemo: str | None
+
+
+@dataclass(frozen=True)
+class MttrAlphaIncidentWindow:
+    period_start: datetime
+    period_end: datetime
+
+
+@dataclass(frozen=True)
+class MttrAlphaPathCountRow:
+    resolution_path: str
+    count: int
+
+
+@dataclass(frozen=True)
+class MttrAlphaIncidentDetailRow:
+    jira_key: str
+    summary: str | None
+    status: str | None
+    priority: str | None
+    healthmemo: str | None
+    created_at: datetime | None
+    first_fix_release_date: datetime | None
+    first_fix_release_tag: str | None
+    mttr_alpha_minutes: int | None
+    mttr_alpha_resolution_path: str | None
+
+
+@dataclass(frozen=True)
+class MttrAlphaReleaseRow:
+    first_fix_release_tag: str
+    first_fix_release_date: datetime
+    issue_count: int
+    median_minutes: int | None
+
+
+def _to_period_datetimes(period_start: date, period_end: date) -> tuple[datetime, datetime]:
+    start_dt = datetime.combine(period_start, time.min, tzinfo=timezone.utc)
+    end_dt = datetime.combine(period_end + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    return start_dt, end_dt
+
+
+def latest_mttr_alpha_incident_window(
+    session: Session, *, period_type: str
+) -> MttrAlphaIncidentWindow | None:
+    row = session.execute(
+        select(Release.committed_at)
+        .where(Release.customer_release.is_(True))
+        .order_by(Release.committed_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    anchor = row.date()
+    pt = period_type.upper()
+    if pt == "WEEK":
+        p_start = anchor - timedelta(days=anchor.weekday())
+        p_end = p_start + timedelta(days=6)
+    elif pt == "MONTH":
+        p_start = date(anchor.year, anchor.month, 1)
+        if anchor.month == 12:
+            p_end = date(anchor.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            p_end = date(anchor.year, anchor.month + 1, 1) - timedelta(days=1)
+    elif pt == "QUARTER":
+        q_month = ((anchor.month - 1) // 3) * 3 + 1
+        p_start = date(anchor.year, q_month, 1)
+        if q_month == 10:
+            p_end = date(anchor.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            p_end = date(anchor.year, q_month + 3, 1) - timedelta(days=1)
+    else:
+        raise ValueError(f"Unsupported period type: {period_type}")
+    start_dt, end_dt = _to_period_datetimes(p_start, p_end)
+    return MttrAlphaIncidentWindow(period_start=start_dt, period_end=end_dt)
+
+
+def count_mttr_alpha_incidents_in_window(
+    session: Session, *, period_start: datetime, period_end: datetime
+) -> int:
+    return int(
+        session.execute(
+            select(func.count(ProductionBug.id)).where(
+                ProductionBug.healthy.is_(True),
+                ProductionBug.jira_created_at_valid.is_(True),
+                ProductionBug.first_fix_release_date.is_not(None),
+                ProductionBug.first_fix_release_date >= period_start,
+                ProductionBug.first_fix_release_date < period_end,
+                ProductionBug.mttr_alpha_minutes.is_not(None),
+            )
+        ).scalar_one()
+    )
+
+
+def median_mttr_alpha_minutes_in_window(
+    session: Session, *, period_start: datetime, period_end: datetime
+) -> int | None:
+    values = (
+        session.execute(
+            select(ProductionBug.mttr_alpha_minutes).where(
+                ProductionBug.healthy.is_(True),
+                ProductionBug.jira_created_at_valid.is_(True),
+                ProductionBug.first_fix_release_date.is_not(None),
+                ProductionBug.first_fix_release_date >= period_start,
+                ProductionBug.first_fix_release_date < period_end,
+                ProductionBug.mttr_alpha_minutes.is_not(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    xs = [int(v) for v in values if v is not None]
+    if not xs:
+        return None
+    xs.sort()
+    n = len(xs)
+    mid = n // 2
+    if n % 2 == 1:
+        return xs[mid]
+    return int(round((xs[mid - 1] + xs[mid]) / 2.0))
+
+
+def list_mttr_alpha_resolution_path_counts(
+    session: Session, *, period_start: datetime, period_end: datetime
+) -> list[MttrAlphaPathCountRow]:
+    rows = session.execute(
+        select(
+            func.coalesce(ProductionBug.mttr_alpha_resolution_path, "unknown").label("path"),
+            func.count(ProductionBug.id).label("count"),
+        )
+        .where(
+            ProductionBug.healthy.is_(True),
+            ProductionBug.jira_created_at_valid.is_(True),
+            ProductionBug.first_fix_release_date.is_not(None),
+            ProductionBug.first_fix_release_date >= period_start,
+            ProductionBug.first_fix_release_date < period_end,
+            ProductionBug.mttr_alpha_minutes.is_not(None),
+        )
+        .group_by("path")
+        .order_by(func.count(ProductionBug.id).desc(), "path")
+    ).all()
+    return [
+        MttrAlphaPathCountRow(resolution_path=str(path), count=int(count))
+        for path, count in rows
+    ]
+
+
+def list_mttr_alpha_incidents_page(
+    session: Session,
+    *,
+    period_start: datetime,
+    period_end: datetime,
+    page: int,
+    size: int,
+    first_fix_release_tag: str | None = None,
+) -> list[MttrAlphaIncidentDetailRow]:
+    q = (
+        select(ProductionBug)
+        .where(
+            ProductionBug.healthy.is_(True),
+            ProductionBug.jira_created_at_valid.is_(True),
+            ProductionBug.first_fix_release_date.is_not(None),
+            ProductionBug.first_fix_release_date >= period_start,
+            ProductionBug.first_fix_release_date < period_end,
+            ProductionBug.mttr_alpha_minutes.is_not(None),
+        )
+        .order_by(ProductionBug.mttr_alpha_minutes.desc(), ProductionBug.jira_key.asc())
+        .offset(page * size)
+        .limit(size)
+    )
+    if first_fix_release_tag:
+        q = q.where(ProductionBug.first_fix_release_tag == first_fix_release_tag)
+    return [
+        MttrAlphaIncidentDetailRow(
+            jira_key=bug.jira_key,
+            summary=bug.summary,
+            status=bug.status,
+            priority=bug.priority,
+            healthmemo=bug.healthmemo,
+            created_at=bug.created_at,
+            first_fix_release_date=bug.first_fix_release_date,
+            first_fix_release_tag=bug.first_fix_release_tag,
+            mttr_alpha_minutes=bug.mttr_alpha_minutes,
+            mttr_alpha_resolution_path=bug.mttr_alpha_resolution_path,
+        )
+        for bug in session.execute(q).scalars().all()
+    ]
+
+
+def count_mttr_alpha_incidents_for_release_tag(
+    session: Session,
+    *,
+    period_start: datetime,
+    period_end: datetime,
+    first_fix_release_tag: str | None = None,
+) -> int:
+    q = select(func.count(ProductionBug.id)).where(
+        ProductionBug.healthy.is_(True),
+        ProductionBug.jira_created_at_valid.is_(True),
+        ProductionBug.first_fix_release_date.is_not(None),
+        ProductionBug.first_fix_release_date >= period_start,
+        ProductionBug.first_fix_release_date < period_end,
+        ProductionBug.mttr_alpha_minutes.is_not(None),
+    )
+    if first_fix_release_tag:
+        q = q.where(ProductionBug.first_fix_release_tag == first_fix_release_tag)
+    return int(session.execute(q).scalar_one())
+
+
+def list_mttr_alpha_releases_page(
+    session: Session,
+    *,
+    period_start: datetime,
+    period_end: datetime,
+    page: int,
+    size: int,
+) -> list[MttrAlphaReleaseRow]:
+    rows = session.execute(
+        select(
+            ProductionBug.first_fix_release_tag,
+            func.max(ProductionBug.first_fix_release_date).label("release_date"),
+            func.count(ProductionBug.id).label("issue_count"),
+        )
+        .where(
+            ProductionBug.healthy.is_(True),
+            ProductionBug.jira_created_at_valid.is_(True),
+            ProductionBug.first_fix_release_date.is_not(None),
+            ProductionBug.first_fix_release_date >= period_start,
+            ProductionBug.first_fix_release_date < period_end,
+            ProductionBug.mttr_alpha_minutes.is_not(None),
+            ProductionBug.first_fix_release_tag.is_not(None),
+        )
+        .group_by(ProductionBug.first_fix_release_tag)
+        .order_by(func.max(ProductionBug.first_fix_release_date).desc())
+        .offset(page * size)
+        .limit(size)
+    ).all()
+    out: list[MttrAlphaReleaseRow] = []
+    for tag, release_date, issue_count in rows:
+        med_values = (
+            session.execute(
+                select(ProductionBug.mttr_alpha_minutes).where(
+                    ProductionBug.healthy.is_(True),
+                    ProductionBug.jira_created_at_valid.is_(True),
+                    ProductionBug.first_fix_release_date.is_not(None),
+                    ProductionBug.first_fix_release_date >= period_start,
+                    ProductionBug.first_fix_release_date < period_end,
+                    ProductionBug.mttr_alpha_minutes.is_not(None),
+                    ProductionBug.first_fix_release_tag == tag,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        xs = sorted(int(v) for v in med_values if v is not None)
+        med: int | None = None
+        if xs:
+            n = len(xs)
+            mid = n // 2
+            med = xs[mid] if n % 2 == 1 else int(round((xs[mid - 1] + xs[mid]) / 2.0))
+        out.append(
+            MttrAlphaReleaseRow(
+                first_fix_release_tag=str(tag),
+                first_fix_release_date=release_date,
+                issue_count=int(issue_count),
+                median_minutes=med,
+            )
+        )
+    return out
 
 
 def count_customer_releases(session: Session, *, repository_id: int | None) -> int:

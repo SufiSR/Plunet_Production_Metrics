@@ -4,11 +4,12 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import RuntimeSettingsDep, SessionDep
 from app.models.release import Release
 from app.models.repository import Repository
+from app.models.production_bug import ProductionBug
 from app.schemas.metrics import CurrentMetricsResponse, HistoryResponse, PeriodType
 from app.schemas.releases import (
     CustomerReleaseDrilldownItem,
@@ -18,6 +19,12 @@ from app.schemas.releases import (
     OffsetPagination,
     ReleaseMergeRequestListResponse,
     ReleaseMergeRequestRow,
+    MttrAlphaIncidentListResponse,
+    MttrAlphaIncidentRow,
+    MttrAlphaReleaseDrilldownItem,
+    MttrAlphaReleaseDrilldownListResponse,
+    MttrAlphaResolutionPathCount,
+    MttrAlphaSummaryResponse,
     ReleaseProductionBugListResponse,
     ReleaseProductionBugRow,
     ReleaseTimelineItem,
@@ -40,6 +47,12 @@ from app.services.release_drilldown_service import (
     list_customer_releases_page,
     list_failed_customer_releases_page,
     list_merge_requests_for_release_page,
+    list_mttr_alpha_incidents_page,
+    list_mttr_alpha_releases_page,
+    list_mttr_alpha_resolution_path_counts,
+    median_mttr_alpha_minutes_in_window,
+    count_mttr_alpha_incidents_in_window,
+    count_mttr_alpha_incidents_for_release_tag,
     list_production_bugs_for_customer_release_page,
 )
 
@@ -56,6 +69,29 @@ def _offset_pagination(*, page: int, size: int, total: int) -> OffsetPagination:
         has_next=(page + 1) * size < total,
         has_previous=page > 0,
     )
+
+
+def _mttr_date_window(
+    *,
+    period_type: PeriodType,
+    from_: date | None,
+    to: date | None,
+) -> tuple[datetime, datetime]:
+    end_date = to or datetime.now(timezone.utc).date()
+    if from_ is None:
+        lookback_days = 30
+        if period_type == PeriodType.MONTH:
+            lookback_days = 90
+        elif period_type == PeriodType.QUARTER:
+            lookback_days = 365
+        start_date = end_date - timedelta(days=lookback_days)
+    else:
+        start_date = from_
+    if start_date > end_date:
+        raise HTTPException(status_code=400, detail="Parameter 'from' must be on or before 'to'")
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+    return start_dt, end_dt
 
 
 @router.get("/current", response_model=CurrentMetricsResponse)
@@ -334,5 +370,137 @@ def list_production_bugs_for_failed_customer_release(
         repository_id=repository_id,
         tag_name=tag_name,
         items=items,
+        pagination=_offset_pagination(page=page, size=size, total=total),
+    )
+
+
+@router.get("/bugs/mttr-alpha/summary", response_model=MttrAlphaSummaryResponse)
+def get_mttr_alpha_summary(
+    db: SessionDep,
+    period_type: PeriodType = PeriodType.WEEK,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: Annotated[date | None, Query()] = None,
+) -> MttrAlphaSummaryResponse:
+    period_start, period_end = _mttr_date_window(period_type=period_type, from_=from_, to=to)
+    incident_count = count_mttr_alpha_incidents_in_window(
+        db, period_start=period_start, period_end=period_end
+    )
+    median_minutes = median_mttr_alpha_minutes_in_window(
+        db, period_start=period_start, period_end=period_end
+    )
+    path_rows = list_mttr_alpha_resolution_path_counts(
+        db, period_start=period_start, period_end=period_end
+    )
+    return MttrAlphaSummaryResponse(
+        period_type=period_type.value,
+        period_start=period_start,
+        period_end=period_end,
+        incident_count=incident_count,
+        median_minutes=median_minutes,
+        resolution_paths=[
+            MttrAlphaResolutionPathCount(resolution_path=r.resolution_path, count=r.count)
+            for r in path_rows
+        ],
+    )
+
+
+@router.get("/bugs/mttr-alpha/incidents", response_model=MttrAlphaIncidentListResponse)
+def list_mttr_alpha_incidents(
+    db: SessionDep,
+    settings: RuntimeSettingsDep,
+    period_type: PeriodType = PeriodType.WEEK,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: Annotated[date | None, Query()] = None,
+    first_fix_release_tag: Annotated[str | None, Query(min_length=1, max_length=255)] = None,
+    page: Annotated[int, Query(ge=0)] = 0,
+    size: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> MttrAlphaIncidentListResponse:
+    period_start, period_end = _mttr_date_window(period_type=period_type, from_=from_, to=to)
+    total = count_mttr_alpha_incidents_for_release_tag(
+        db,
+        period_start=period_start,
+        period_end=period_end,
+        first_fix_release_tag=first_fix_release_tag,
+    )
+    rows = list_mttr_alpha_incidents_page(
+        db,
+        period_start=period_start,
+        period_end=period_end,
+        page=page,
+        size=size,
+        first_fix_release_tag=first_fix_release_tag,
+    )
+    jira_base = (settings.jira.base_url or "").strip()
+    return MttrAlphaIncidentListResponse(
+        period_type=period_type.value,
+        period_start=period_start,
+        period_end=period_end,
+        items=[
+            MttrAlphaIncidentRow(
+                jira_key=r.jira_key,
+                summary=r.summary,
+                status=r.status,
+                priority=r.priority,
+                healthmemo=r.healthmemo,
+                created_at=r.created_at,
+                first_fix_release_date=r.first_fix_release_date,
+                first_fix_release_tag=r.first_fix_release_tag,
+                mttr_alpha_minutes=r.mttr_alpha_minutes,
+                mttr_alpha_resolution_path=r.mttr_alpha_resolution_path,
+                jira_browse_url=(
+                    build_jira_browse_url(base_url=jira_base, jira_key=r.jira_key)
+                    if jira_base
+                    else None
+                ),
+            )
+            for r in rows
+        ],
+        pagination=_offset_pagination(page=page, size=size, total=total),
+    )
+
+
+@router.get("/bugs/mttr-alpha/releases", response_model=MttrAlphaReleaseDrilldownListResponse)
+def list_mttr_alpha_releases(
+    db: SessionDep,
+    period_type: PeriodType = PeriodType.WEEK,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: Annotated[date | None, Query()] = None,
+    page: Annotated[int, Query(ge=0)] = 0,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> MttrAlphaReleaseDrilldownListResponse:
+    period_start, period_end = _mttr_date_window(period_type=period_type, from_=from_, to=to)
+    total = int(
+        db.execute(
+            select(func.count(func.distinct(ProductionBug.first_fix_release_tag))).where(
+                ProductionBug.healthy.is_(True),
+                ProductionBug.jira_created_at_valid.is_(True),
+                ProductionBug.first_fix_release_date.is_not(None),
+                ProductionBug.first_fix_release_date >= period_start,
+                ProductionBug.first_fix_release_date < period_end,
+                ProductionBug.mttr_alpha_minutes.is_not(None),
+                ProductionBug.first_fix_release_tag.is_not(None),
+            )
+        ).scalar_one()
+    )
+    rows = list_mttr_alpha_releases_page(
+        db,
+        period_start=period_start,
+        period_end=period_end,
+        page=page,
+        size=size,
+    )
+    return MttrAlphaReleaseDrilldownListResponse(
+        period_type=period_type.value,
+        period_start=period_start,
+        period_end=period_end,
+        items=[
+            MttrAlphaReleaseDrilldownItem(
+                first_fix_release_tag=r.first_fix_release_tag,
+                first_fix_release_date=r.first_fix_release_date,
+                issue_count=r.issue_count,
+                median_minutes=r.median_minutes,
+            )
+            for r in rows
+        ],
         pagination=_offset_pagination(page=page, size=size, total=total),
     )

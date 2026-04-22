@@ -212,6 +212,57 @@ export interface ReleaseProductionBugListResponse {
   pagination: OffsetPagination;
 }
 
+export interface MttrAlphaResolutionPathCount {
+  resolution_path: string;
+  count: number;
+}
+
+export interface MttrAlphaSummaryResponse {
+  period_type: "WEEK" | "MONTH" | "QUARTER";
+  period_start: string;
+  period_end: string;
+  incident_count: number;
+  median_minutes: number | null;
+  resolution_paths: MttrAlphaResolutionPathCount[];
+}
+
+export interface MttrAlphaIncidentRow {
+  jira_key: string;
+  summary: string | null;
+  status: string | null;
+  priority: string | null;
+  healthmemo: string | null;
+  created_at: string | null;
+  first_fix_release_date: string | null;
+  first_fix_release_tag: string | null;
+  mttr_alpha_minutes: number | null;
+  mttr_alpha_resolution_path: string | null;
+  jira_browse_url: string | null;
+}
+
+export interface MttrAlphaIncidentListResponse {
+  period_type: "WEEK" | "MONTH" | "QUARTER";
+  period_start: string;
+  period_end: string;
+  items: MttrAlphaIncidentRow[];
+  pagination: OffsetPagination;
+}
+
+export interface MttrAlphaReleaseDrilldownItem {
+  first_fix_release_tag: string;
+  first_fix_release_date: string;
+  issue_count: number;
+  median_minutes: number | null;
+}
+
+export interface MttrAlphaReleaseDrilldownListResponse {
+  period_type: "WEEK" | "MONTH" | "QUARTER";
+  period_start: string;
+  period_end: string;
+  items: MttrAlphaReleaseDrilldownItem[];
+  pagination: OffsetPagination;
+}
+
 // ── Error response ───────────────────────────────────────────────────────────
 
 export interface ApiError {

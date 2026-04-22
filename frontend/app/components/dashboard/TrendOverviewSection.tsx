@@ -3,6 +3,7 @@
 import { useUIStore } from "@/lib/store";
 import { CfrReleaseDrilldownPanel } from "./CfrReleaseDrilldownPanel";
 import { DeploymentSwimlaneTimeline } from "./DeploymentSwimlaneTimeline";
+import { MttrAlphaDrilldownPanel } from "./MttrAlphaDrilldownPanel";
 import { ReleaseDrilldownPanel } from "./ReleaseDrilldownPanel";
 import { TrendChart } from "./TrendChart";
 
@@ -20,6 +21,7 @@ export function TrendOverviewSection() {
       {trendMetric === "deployment_frequency" && <DeploymentSwimlaneTimeline />}
       {trendMetric === "lead_time_for_changes" && <ReleaseDrilldownPanel />}
       {trendMetric === "change_failure_rate" && <CfrReleaseDrilldownPanel />}
+      {trendMetric === "mttr_alpha" && <MttrAlphaDrilldownPanel />}
     </div>
   );
 }

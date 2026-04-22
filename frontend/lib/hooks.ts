@@ -111,3 +111,37 @@ export function useFailedReleaseIssues(
     enabled: repositoryId != null && Boolean(tagName),
   });
 }
+
+export function useMttrAlphaSummary() {
+  const period = useUIStore((s) => s.period);
+  return useQuery({
+    queryKey: queryKeys.mttrAlphaSummary(period),
+    queryFn: () => apiClient.getMttrAlphaSummary(period),
+  });
+}
+
+export function useMttrAlphaIncidents(
+  page: number,
+  size = 50,
+  firstFixReleaseTag: string | null = null,
+) {
+  const period = useUIStore((s) => s.period);
+  return useQuery({
+    queryKey: queryKeys.mttrAlphaIncidents(period, page, size, firstFixReleaseTag),
+    queryFn: () =>
+      apiClient.getMttrAlphaIncidents({
+        period,
+        page,
+        size,
+        firstFixReleaseTag,
+      }),
+  });
+}
+
+export function useMttrAlphaReleases(page: number, size = 20) {
+  const period = useUIStore((s) => s.period);
+  return useQuery({
+    queryKey: queryKeys.mttrAlphaReleases(period, page, size),
+    queryFn: () => apiClient.getMttrAlphaReleases({ period, page, size }),
+  });
+}

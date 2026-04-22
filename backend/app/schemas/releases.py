@@ -99,3 +99,54 @@ class ReleaseProductionBugListResponse(BaseModel):
     tag_name: str
     items: list[ReleaseProductionBugRow]
     pagination: OffsetPagination
+
+
+class MttrAlphaResolutionPathCount(BaseModel):
+    resolution_path: str
+    count: int
+
+
+class MttrAlphaSummaryResponse(BaseModel):
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+    incident_count: int
+    median_minutes: int | None
+    resolution_paths: list[MttrAlphaResolutionPathCount]
+
+
+class MttrAlphaIncidentRow(BaseModel):
+    jira_key: str
+    summary: str | None
+    status: str | None
+    priority: str | None
+    healthmemo: str | None
+    created_at: datetime | None
+    first_fix_release_date: datetime | None
+    first_fix_release_tag: str | None
+    mttr_alpha_minutes: int | None
+    mttr_alpha_resolution_path: str | None
+    jira_browse_url: str | None = None
+
+
+class MttrAlphaIncidentListResponse(BaseModel):
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+    items: list[MttrAlphaIncidentRow]
+    pagination: OffsetPagination
+
+
+class MttrAlphaReleaseDrilldownItem(BaseModel):
+    first_fix_release_tag: str
+    first_fix_release_date: datetime
+    issue_count: int
+    median_minutes: int | None
+
+
+class MttrAlphaReleaseDrilldownListResponse(BaseModel):
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+    items: list[MttrAlphaReleaseDrilldownItem]
+    pagination: OffsetPagination

@@ -7,6 +7,9 @@ import type {
   ReleaseProductionBugListResponse,
   RepositoriesResponse,
   ReleaseTimelineResponse,
+  MttrAlphaSummaryResponse,
+  MttrAlphaIncidentListResponse,
+  MttrAlphaReleaseDrilldownListResponse,
   SyncStatusResponse,
   PeriodType,
 } from "@/types/api";
@@ -242,6 +245,43 @@ export const apiClient = {
     p.set("size", String(opts.size ?? 50));
     return request<ReleaseProductionBugListResponse>(
       `/metrics/releases/customer/failed/issues?${p.toString()}`,
+    );
+  },
+
+  getMttrAlphaSummary: (period: PeriodType) =>
+    request<MttrAlphaSummaryResponse>(
+      `/metrics/bugs/mttr-alpha/summary?period_type=${backendPeriodType[period]}`,
+    ),
+
+  getMttrAlphaIncidents: (opts: {
+    period: PeriodType;
+    page?: number;
+    size?: number;
+    firstFixReleaseTag?: string | null;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("period_type", backendPeriodType[opts.period]);
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 50));
+    if (opts.firstFixReleaseTag) {
+      p.set("first_fix_release_tag", opts.firstFixReleaseTag);
+    }
+    return request<MttrAlphaIncidentListResponse>(
+      `/metrics/bugs/mttr-alpha/incidents?${p.toString()}`,
+    );
+  },
+
+  getMttrAlphaReleases: (opts: {
+    period: PeriodType;
+    page?: number;
+    size?: number;
+  }) => {
+    const p = new URLSearchParams();
+    p.set("period_type", backendPeriodType[opts.period]);
+    p.set("page", String(opts.page ?? 0));
+    p.set("size", String(opts.size ?? 20));
+    return request<MttrAlphaReleaseDrilldownListResponse>(
+      `/metrics/bugs/mttr-alpha/releases?${p.toString()}`,
     );
   },
 };

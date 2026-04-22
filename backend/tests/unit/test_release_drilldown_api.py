@@ -351,3 +351,90 @@ def test_failed_customer_release_drilldown_and_issues(drilldown_client: TestClie
         params={"repository_id": 1, "tag_name": "v99.0.0"},
     )
     assert missing.status_code == 404
+
+
+def test_mttr_alpha_summary_and_incidents(drilldown_client: TestClient) -> None:
+    with Session(database.get_engine()) as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="plunet",
+                path="dev/plunet",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.add(
+            Release(
+                id=1,
+                repository_id=1,
+                tag_name="v11.1.0",
+                customer_release=True,
+                version_major=11,
+                version_minor=1,
+                version_patch=0,
+                commit_sha="c" * 40,
+                committed_at=_utc(2026, 4, 20, 12, 0),
+            )
+        )
+        db.add(
+            ProductionBug(
+                id=11,
+                jira_key="DEVOPS-801",
+                summary="Bug A",
+                status="Done",
+                priority="Critical",
+                healthy=True,
+                healthmemo="post-production",
+                jira_created_at_valid=True,
+                created_at=_utc(2026, 4, 17, 8, 0),
+                first_fix_release_date=_utc(2026, 4, 21, 12, 0),
+                first_fix_release_tag="v11.1.0",
+                mttr_alpha_minutes=120,
+                mttr_alpha_resolution_path="mr_jira_key",
+            )
+        )
+        db.add(
+            ProductionBug(
+                id=12,
+                jira_key="DEVOPS-802",
+                summary="Bug B",
+                status="Done",
+                priority="Blocker",
+                healthy=True,
+                healthmemo="post-production",
+                jira_created_at_valid=True,
+                created_at=_utc(2026, 4, 16, 7, 0),
+                first_fix_release_date=_utc(2026, 4, 22, 12, 0),
+                first_fix_release_tag="v11.1.0",
+                mttr_alpha_minutes=300,
+                mttr_alpha_resolution_path="fix_version",
+            )
+        )
+        db.commit()
+
+    s_resp = drilldown_client.get(
+        "/api/metrics/bugs/mttr-alpha/summary",
+        params={"period_type": "WEEK", "from": "2026-04-14", "to": "2026-04-22"},
+    )
+    assert s_resp.status_code == 200
+    s_body = s_resp.json()
+    assert s_body["period_type"] == "WEEK"
+    assert s_body["incident_count"] == 2
+    assert s_body["median_minutes"] == 210
+    paths = {row["resolution_path"]: row["count"] for row in s_body["resolution_paths"]}
+    assert paths["mr_jira_key"] == 1
+    assert paths["fix_version"] == 1
+
+    i_resp = drilldown_client.get(
+        "/api/metrics/bugs/mttr-alpha/incidents",
+        params={"period_type": "WEEK", "from": "2026-04-14", "to": "2026-04-22", "page": 0, "size": 1},
+    )
+    assert i_resp.status_code == 200
+    i_body = i_resp.json()
+    assert i_body["pagination"]["total_elements"] == 2
+    assert i_body["pagination"]["has_next"] is True
+    assert i_body["items"][0]["jira_key"] == "DEVOPS-802"
+    assert i_body["items"][0]["mttr_alpha_minutes"] == 300
+    assert "atlassian.net/browse/DEVOPS-802" in (i_body["items"][0]["jira_browse_url"] or "")
