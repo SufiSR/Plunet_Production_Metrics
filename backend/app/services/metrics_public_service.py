@@ -305,12 +305,14 @@ def build_current_metrics_response(
     repository_id: int | None = None,
     period_type: str = "WEEK",
 ) -> CurrentMetricsResponse:
-    # Latest snapshot window vs the immediately prior window (repo rows aggregated per window).
+    # Aggregate over trailing windows so UI periods map to meaningful horizons:
+    # WEEK => ~30d (5 weeks), MONTH => ~quarter (3 months), QUARTER => ~year (4 quarters).
+    current_window_count = {"WEEK": 5, "MONTH": 3, "QUARTER": 4}.get(period_type.upper(), 1)
     recent = _recent_windows(
         db,
         period_type=period_type,
         repository_id=repository_id,
-        limit=2,
+        limit=current_window_count * 2,
     )
 
     if not recent:
@@ -336,8 +338,13 @@ def build_current_metrics_response(
             lead_time_diagnostics=None,
         )
 
-    current_windows = [recent[0]]
-    prev_windows = [recent[1]] if len(recent) > 1 else []
+    if len(recent) <= current_window_count:
+        # Sparse datasets: preserve previous behavior (latest vs immediately previous)
+        current_windows = [recent[0]]
+        prev_windows = [recent[1]] if len(recent) > 1 else []
+    else:
+        current_windows = recent[:current_window_count]
+        prev_windows = recent[current_window_count : current_window_count * 2]
 
     rows = _load_snapshots_for_windows(
         db,
@@ -356,7 +363,8 @@ def build_current_metrics_response(
     prev = _aggregate_rows(prev_rows)
 
     combined_start = min(w.period_start for w in current_windows)
-    combined_end = max(w.period_end for w in current_windows)
+    today = datetime.now(timezone.utc).date()
+    combined_end = min(max(w.period_end for w in current_windows), today)
 
     dep = cur["deployment_freq"]
     dep_p = prev["deployment_freq"]
@@ -547,7 +555,7 @@ def build_history_response(
         data.append(
             HistoryDataPoint(
                 period_start=period_start,
-                period_end=period_end,
+                period_end=min(period_end, to_date),
                 deployment_frequency=dep,
                 lead_time_minutes=lead,
                 lead_time_sample_count=lt_sc,

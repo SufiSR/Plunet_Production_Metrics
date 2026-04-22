@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import create_engine, event
@@ -256,6 +256,57 @@ def test_build_current_metrics_response_with_week_trends_and_repo_filter() -> No
         assert one.repository_count == 1
 
 
+def test_build_current_metrics_response_aggregates_trailing_quarters_for_yearly_view() -> None:
+    with _session() as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="r1",
+                path="g/r1",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.flush()
+        # 8 quarters: 4 current-year window + 4 prior-year window.
+        quarter_windows = [
+            (date(2024, 4, 1), date(2024, 6, 30), Decimal("1.0"), 400),
+            (date(2024, 7, 1), date(2024, 9, 30), Decimal("1.0"), 400),
+            (date(2024, 10, 1), date(2024, 12, 31), Decimal("1.0"), 400),
+            (date(2025, 1, 1), date(2025, 3, 31), Decimal("1.0"), 400),
+            (date(2025, 4, 1), date(2025, 6, 30), Decimal("3.0"), 200),
+            (date(2025, 7, 1), date(2025, 9, 30), Decimal("3.0"), 200),
+            (date(2025, 10, 1), date(2025, 12, 31), Decimal("3.0"), 200),
+            (date(2026, 1, 1), date(2026, 3, 31), Decimal("3.0"), 200),
+        ]
+        for idx, (p_start, p_end, dep, mttr) in enumerate(quarter_windows, start=1):
+            db.add(
+                MetricSnapshot(
+                    repository_id=1,
+                    period_type="QUARTER",
+                    period_start=p_start,
+                    period_end=p_end,
+                    deployment_freq=dep,
+                    lead_time_minutes=120,
+                    release_wait_median_minutes=120,
+                    change_failure_rate=Decimal("0.08"),
+                    mttr_minutes=None,
+                    mttr_alpha_minutes=mttr,
+                    lead_post_production_median_minutes=None,
+                    created_at=_utc_ts(2026, 4, min(idx, 28)),
+                )
+            )
+        db.commit()
+
+        yearly = mps.build_current_metrics_response(db, repository_id=1, period_type="QUARTER")
+        assert yearly.period_start == date(2025, 4, 1)
+        assert yearly.period_end == date(2026, 3, 31)
+        assert yearly.deployment_frequency.value is not None
+        assert yearly.deployment_frequency.value > 2.5
+        assert yearly.deployment_frequency.trend == Trend.UP
+
+
 def test_build_history_response_pagination_and_levels() -> None:
     with _session() as db:
         db.add(
@@ -328,3 +379,89 @@ def test_build_history_response_pagination_and_levels() -> None:
         )
         assert empty.pagination.total_pages == 0
         assert empty.data == []
+
+
+def test_build_history_response_clips_future_period_end_to_requested_to_date() -> None:
+    with _session() as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="a",
+                path="g/a",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.flush()
+        db.add(
+            MetricSnapshot(
+                repository_id=1,
+                period_type="QUARTER",
+                period_start=date(2026, 4, 1),
+                period_end=date(2026, 6, 30),
+                deployment_freq=Decimal("1.0"),
+                lead_time_minutes=60,
+                release_wait_median_minutes=30,
+                change_failure_rate=Decimal("0.1"),
+                mttr_minutes=None,
+                mttr_alpha_minutes=120,
+                lead_post_production_median_minutes=None,
+                created_at=_utc_ts(2026, 4, 22),
+            )
+        )
+        db.commit()
+
+        hist = mps.build_history_response(
+            db,
+            period_type=PeriodType.QUARTER,
+            from_date=date(2025, 4, 22),
+            to_date=date(2026, 4, 22),
+            repository_id=None,
+            page=0,
+            size=10,
+        )
+        assert len(hist.data) == 1
+        assert hist.data[0].period_start == date(2026, 4, 1)
+        assert hist.data[0].period_end == date(2026, 4, 22)
+
+
+def test_build_current_metrics_response_clips_future_window_end_to_today() -> None:
+    with _session() as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="a",
+                path="g/a",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.flush()
+        today = datetime.now(timezone.utc).date()
+        quarter_start = date(today.year, ((today.month - 1) // 3) * 3 + 1, 1)
+        if quarter_start.month == 10:
+            quarter_end = date(quarter_start.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            quarter_end = date(quarter_start.year, quarter_start.month + 3, 1) - timedelta(days=1)
+        db.add(
+            MetricSnapshot(
+                repository_id=1,
+                period_type="QUARTER",
+                period_start=quarter_start,
+                period_end=quarter_end,
+                deployment_freq=Decimal("1.0"),
+                lead_time_minutes=60,
+                release_wait_median_minutes=30,
+                change_failure_rate=Decimal("0.1"),
+                mttr_minutes=None,
+                mttr_alpha_minutes=120,
+                lead_post_production_median_minutes=None,
+                created_at=_utc_ts(today.year, today.month, max(1, min(today.day, 28))),
+            )
+        )
+        db.commit()
+
+        cur = mps.build_current_metrics_response(db, repository_id=1, period_type="QUARTER")
+        assert cur.period_end <= today

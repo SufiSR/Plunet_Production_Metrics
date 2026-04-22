@@ -1,3 +1,4 @@
+| DEVOPS-507 | implementation | 2026-04-22 11:35 | 2026-04-22 11:55 | 20m | Trend overview period semantics bugfix: clip partial month/quarter period_end to current date so quarterly/yearly views do not imply future data; tests and API validation |
 | DEVOPS-506 | implementation | 2026-04-22 10:43 | 2026-04-22 11:28 | 45m | MTTR Alpha UX/data improvements: visible trend points, release-based version drill-down, and 30d/quarterly/yearly-aligned detail windows; rebuilt and browser-verified |
 | DEVOPS-504 | jira-update | 2026-04-16 15:59 | 2026-04-16 16:01 | 2m | Bug Subtask under DEVOPS-488: description, Solution (ADF), Confluence component, assignee; Jira worklog 2m; GitLab commit/push DEVOPS-504 |
 | DEVOPS-488 | jira-update | 2026-04-16 15:49 | 2026-04-16 15:50 | 1m | Commit and push workspace changes to GitLab |

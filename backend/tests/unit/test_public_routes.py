@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -94,6 +94,26 @@ def test_metrics_history_defaults(public_client: TestClient) -> None:
     assert "from" in body
     assert "to" in body
     assert body["pagination"]["page"] == 0
+
+
+def test_metrics_history_default_horizon_depends_on_period_type(public_client: TestClient) -> None:
+    to_date = date(2026, 4, 22)
+    expected = {
+        "WEEK": 30,
+        "MONTH": 90,
+        "QUARTER": 365,
+    }
+    for period_type, days in expected.items():
+        response = public_client.get(
+            "/api/metrics/history",
+            params={"period_type": period_type, "to": to_date.isoformat()},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        from_date = date.fromisoformat(body["from"])
+        returned_to = date.fromisoformat(body["to"])
+        assert returned_to == to_date
+        assert (returned_to - from_date).days == days
 
 
 def test_sync_status_shape(public_client: TestClient) -> None:

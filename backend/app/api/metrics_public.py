@@ -79,11 +79,10 @@ def _mttr_date_window(
 ) -> tuple[datetime, datetime]:
     end_date = to or datetime.now(timezone.utc).date()
     if from_ is None:
-        lookback_days = 30
-        if period_type == PeriodType.MONTH:
-            lookback_days = 90
-        elif period_type == PeriodType.QUARTER:
-            lookback_days = 365
+        # Keep MTTR detail window aligned with selected dashboard period horizon.
+        lookback_days = {PeriodType.WEEK: 30, PeriodType.MONTH: 90, PeriodType.QUARTER: 365}[
+            period_type
+        ]
         start_date = end_date - timedelta(days=lookback_days)
     else:
         start_date = from_
@@ -108,7 +107,7 @@ def get_metrics_history(
     period_type: PeriodType = PeriodType.WEEK,
     from_: Annotated[
         date | None,
-        Query(alias="from", description="Start date (ISO); default 12 weeks before `to`"),
+        Query(alias="from", description="Start date (ISO); default depends on period type"),
     ] = None,
     to: Annotated[
         date | None,
@@ -121,7 +120,11 @@ def get_metrics_history(
     if to is None:
         to = datetime.now(timezone.utc).date()
     if from_ is None:
-        from_ = to - timedelta(weeks=12)
+        # WEEK => ~30d, MONTH => ~quarter, QUARTER => ~year
+        lookback_days = {PeriodType.WEEK: 30, PeriodType.MONTH: 90, PeriodType.QUARTER: 365}[
+            period_type
+        ]
+        from_ = to - timedelta(days=lookback_days)
     if from_ > to:
         raise HTTPException(status_code=400, detail="Parameter 'from' must be on or before 'to'")
     return build_history_response(
