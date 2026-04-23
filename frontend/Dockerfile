@@ -22,6 +22,10 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+# Base path for hosting the application on a subpath (e.g. /dora)
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
+
 # Server-side proxy destination baked into rewrite rules at build time.
 # For Docker Compose: http://backend:8000  For standalone non-Docker: http://localhost:8000
 ARG BACKEND_INTERNAL_URL=http://localhost:8000

@@ -48,6 +48,8 @@ services:
       # Pulled from project .env via Compose interpolation (visible in `docker compose config`).
       # Also in env_file above; default INFO matches backend main.py.
       DORA_LOG_LEVEL: ${DORA_LOG_LEVEL:-INFO}
+      # Optional: FastAPI root path for hosting on a subpath
+      API_ROOT_PATH: ${API_ROOT_PATH:-}
     volumes:
       - ./configuration.yml:/app/configuration.yml:ro
     ports:
@@ -83,6 +85,8 @@ services:
         # BACKEND_INTERNAL_URL is also baked at build time into the rewrite rules
         # so the Next.js server knows how to reach the backend from inside Docker.
         BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000}
+        # Base path for hosting on a subpath (e.g. /dora)
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
