@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -449,6 +450,55 @@ def _resolve_orphaned_sync_logs(session_factory: Callable[[], Session]) -> None:
         return 0
 
     _run_with_session(session_factory, _resolve)
+
+
+def reconcile_nightly_runs_on_app_startup(
+    session_factory: Callable[[], Session] = SessionLocal,
+) -> None:
+    """Reconcile `sync_log` so the UI and scheduler match reality after a process start.
+
+    Orphan resolution (``_resolve_orphaned_sync_logs``) normally runs only when
+    :func:`run_nightly_sync` starts, so a crash mid-sync can leave a row stuck in
+    ``status=running`` until the next run—making restarts look like a sync is still
+    in progress. We run the same time-based and duplicate-finish cleanup on every
+    app boot, then (unless disabled) mark any *remaining* ``nightly``+``running``
+    rows as interrupted: a fresh process is not still executing a prior in-memory
+    pipeline in the typical single-server deployment.
+
+    Set ``DORA_SKIP_STARTUP_SYNC_RECONCILE=1`` (or ``true``) to skip the final
+    "mark still-running" step when multiple backend instances share the database.
+    """
+    _resolve_orphaned_sync_logs(session_factory)
+    if (os.getenv("DORA_SKIP_STARTUP_SYNC_RECONCILE") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return
+
+    def _mark_interrupted(db: Session) -> int:
+        now = datetime.now(timezone.utc)
+        result = db.execute(
+            update(SyncLog)
+            .where(SyncLog.source == "nightly", SyncLog.status == "running")
+            .values(
+                status="crashed",
+                finished_at=now,
+                error_message=(
+                    "Interrupted: server or worker restarted before the pipeline finished "
+                    "(startup reconciliation)"
+                ),
+            )
+        )
+        if result.rowcount and int(result.rowcount) > 0:
+            logger.info(
+                "startup_sync_reconciliation marked %s stuck nightly run(s) as crashed",
+                result.rowcount,
+            )
+        db.commit()
+        return 0
+
+    _run_with_session(session_factory, _mark_interrupted)
 
 
 def run_nightly_sync(

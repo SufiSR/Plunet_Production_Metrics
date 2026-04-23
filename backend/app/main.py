@@ -17,6 +17,7 @@ from app.database import SessionLocal
 from app.scheduler import start_scheduler, stop_scheduler
 from app.schemas.errors import ErrorCode, ErrorResponse
 from app.services.config_service import load_runtime_config
+from app.services.sync_pipeline import reconcile_nightly_runs_on_app_startup
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _configure_application_logging()
     with SessionLocal() as db:
         config = load_runtime_config(db=db).settings
+    reconcile_nightly_runs_on_app_startup()
     start_scheduler(config)
     try:
         yield

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine, event
@@ -11,6 +11,7 @@ from app.models import Base
 from app.models.production_bug import ProductionBug
 from app.models.release import Release
 from app.models.repository import Repository
+from app.models.sync_log import SyncLog
 from app.services import sync_pipeline as sp
 from app.services.config_service import RuntimeConfig
 from app.services.webhook_service import send_webhook_notification
@@ -288,3 +289,57 @@ def test_run_nightly_sync_exception_after_success_finishes_failed_log(
 
     assert finishes[-1]["status"] == "failed"
     assert "nightly:" in str(finishes[-1]["error_message"] or "")
+
+
+def test_reconcile_nightly_runs_on_app_startup_marks_stuck_running_as_crashed() -> None:
+    maker = _session_maker()
+    # Recent: not auto-resolved by the 4h rule in _resolve_orphaned_sync_logs
+    started = datetime.now(timezone.utc) - timedelta(hours=1)
+    with maker() as db:
+        db.add(
+            SyncLog(
+                id=1,
+                source="nightly",
+                started_at=started,
+                status="running",
+                records_processed=0,
+                error_message=None,
+            )
+        )
+        db.commit()
+
+    sp.reconcile_nightly_runs_on_app_startup(session_factory=maker)
+
+    with maker() as db:
+        row = db.get(SyncLog, 1)
+        assert row is not None
+        assert row.status == "crashed"
+        assert row.finished_at is not None
+        assert "restart" in (row.error_message or "").lower()
+
+
+def test_reconcile_nightly_runs_on_app_startup_skips_interrupt_when_env_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DORA_SKIP_STARTUP_SYNC_RECONCILE", "1")
+    maker = _session_maker()
+    started = datetime.now(timezone.utc) - timedelta(minutes=5)
+    with maker() as db:
+        db.add(
+            SyncLog(
+                id=1,
+                source="nightly",
+                started_at=started,
+                status="running",
+                records_processed=0,
+                error_message=None,
+            )
+        )
+        db.commit()
+
+    sp.reconcile_nightly_runs_on_app_startup(session_factory=maker)
+
+    with maker() as db:
+        row = db.get(SyncLog, 1)
+        assert row is not None
+        assert row.status == "running"
