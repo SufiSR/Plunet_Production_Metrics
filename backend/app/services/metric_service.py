@@ -297,23 +297,12 @@ def calculate_dev_review_minutes(
     return int(Decimal(str(median(dev_review_minutes))).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def _lead_time_mr_filters(
-    *,
-    start_dt: datetime,
-    end_dt: datetime,
-    repository_id: int,
+def _lead_time_mr_exclusion_clauses(
     config: ConfigurationSchema,
-) -> list[object]:
-    filters: list[object] = [
-        MergeRequest.repository_id == repository_id,
-        MergeRequest.first_customer_tag_date.is_not(None),
-        MergeRequest.first_customer_tag_date >= start_dt,
-        MergeRequest.first_customer_tag_date < end_dt,
-    ]
-
+) -> list[object] | None:
+    """OR of release-only title/source markers, or None when no exclusions apply."""
     if not config.gitlab.exclude_release_only_mrs_from_lead_time:
-        return filters
-
+        return None
     title_markers = [
         marker.strip().lower()
         for marker in config.gitlab.release_mr_title_markers
@@ -333,9 +322,71 @@ def _lead_time_mr_filters(
         exclusion_clauses.append(
             func.lower(func.coalesce(MergeRequest.source_branch, "")).like(f"%{marker}%")
         )
-    if exclusion_clauses:
-        filters.append(~or_(*exclusion_clauses))
+    return exclusion_clauses or None
+
+
+def _lead_time_mr_filters_core(
+    *,
+    start_dt: datetime,
+    end_dt: datetime,
+    repository_id_column,
+    config: ConfigurationSchema,
+) -> list[object]:
+    filters: list[object] = [
+        repository_id_column,
+        MergeRequest.first_customer_tag_date.is_not(None),
+        MergeRequest.first_customer_tag_date >= start_dt,
+        MergeRequest.first_customer_tag_date < end_dt,
+    ]
+
+    ex = _lead_time_mr_exclusion_clauses(config)
+    if ex is not None:
+        filters.append(~or_(*ex))
     return filters
+
+
+def _lead_time_mr_filters(
+    *,
+    start_dt: datetime,
+    end_dt: datetime,
+    repository_id: int,
+    config: ConfigurationSchema,
+) -> list[object]:
+    return _lead_time_mr_filters_core(
+        start_dt=start_dt,
+        end_dt=end_dt,
+        repository_id_column=MergeRequest.repository_id == repository_id,
+        config=config,
+    )
+
+
+def _lead_time_mr_filters_for_repos(
+    *,
+    start_dt: datetime,
+    end_dt: datetime,
+    repository_ids: list[int],
+    config: ConfigurationSchema,
+) -> list[object]:
+    if not repository_ids:
+        return _lead_time_mr_filters_core(
+            start_dt=start_dt,
+            end_dt=end_dt,
+            repository_id_column=MergeRequest.repository_id == -1,
+            config=config,
+        )
+    if len(repository_ids) == 1:
+        return _lead_time_mr_filters_core(
+            start_dt=start_dt,
+            end_dt=end_dt,
+            repository_id_column=MergeRequest.repository_id == repository_ids[0],
+            config=config,
+        )
+    return _lead_time_mr_filters_core(
+        start_dt=start_dt,
+        end_dt=end_dt,
+        repository_id_column=MergeRequest.repository_id.in_(repository_ids),
+        config=config,
+    )
 
 
 def merge_request_included_in_lead_time_cohort(

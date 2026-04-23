@@ -5,6 +5,15 @@
 export type DoraLevel = "ELITE" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 export type SyncRunStatus = "SUCCESS" | "PARTIAL_FAILURE" | "FAILED" | "RUNNING";
 export type PeriodType = "30d" | "quarterly" | "yearly";
+/** Query param for GET /metrics/* — optional lead time disaggregation (DEVOPS-510). */
+export type LeadTimeBreakdown = "none" | "branch" | "stream";
+
+export interface LeadTimeBreakdownBucket {
+  median_lead_time_minutes: number | null;
+  sample_count: number;
+  dev_review_median_minutes?: number | null;
+  release_wait_median_minutes?: number | null;
+}
 
 // ── Metrics current ──────────────────────────────────────────────────────────
 
@@ -36,6 +45,8 @@ export interface MetricsCurrentResponse {
     calendar_days: number | null;
   };
   lead_time_diagnostics?: LeadTimeDiagnostics | null;
+  lead_time_by_branch?: Record<string, LeadTimeBreakdownBucket> | null;
+  lead_time_by_stream?: Record<string, LeadTimeBreakdownBucket> | null;
 }
 
 // ── Metrics history ──────────────────────────────────────────────────────────
@@ -50,6 +61,8 @@ export interface MetricDataPoint {
   lead_time_sample_count?: number | null;
   change_failure_rate: number | null;
   mttr_alpha: number | null;
+  lead_time_by_branch?: Record<string, LeadTimeBreakdownBucket> | null;
+  lead_time_by_stream?: Record<string, LeadTimeBreakdownBucket> | null;
 }
 
 export interface MetricsHistoryResponse {

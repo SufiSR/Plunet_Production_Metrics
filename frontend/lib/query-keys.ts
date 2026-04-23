@@ -1,12 +1,12 @@
-import type { PeriodType } from "@/types/api";
+import type { LeadTimeBreakdown, PeriodType } from "@/types/api";
 import type { AdminRawTableSortDirection } from "@/types/admin";
 
 export const queryKeys = {
-  metricsCurrent: (period: PeriodType) =>
-    ["metrics", "current", period] as const,
+  metricsCurrent: (period: PeriodType, leadBreakdown: LeadTimeBreakdown) =>
+    ["metrics", "current", period, leadBreakdown] as const,
 
-  metricsHistory: (period: PeriodType) =>
-    ["metrics", "history", period] as const,
+  metricsHistory: (period: PeriodType, leadBreakdown: LeadTimeBreakdown) =>
+    ["metrics", "history", period, leadBreakdown] as const,
 
   syncStatus: () => ["sync", "status"] as const,
 

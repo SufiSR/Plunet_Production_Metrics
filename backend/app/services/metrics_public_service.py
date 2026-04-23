@@ -9,11 +9,14 @@ from statistics import median
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config_schema import ConfigurationSchema
 from app.models.metric_snapshot import MetricSnapshot
 from app.schemas.metrics import (
     CurrentMetricsResponse,
     HistoryDataPoint,
     HistoryResponse,
+    LeadTimeBreakdownBucket,
+    LeadTimeBreakdownParam,
     LeadTimeDiagnostics,
     MetricValue,
     Pagination,
@@ -21,6 +24,13 @@ from app.schemas.metrics import (
     PerformanceLevels,
     PeriodType,
     Trend,
+)
+from app.services.lead_time_breakdown import (
+    active_repository_ids,
+    fetch_lead_cohort_rows,
+    fetch_lead_cohort_rows_range,
+    group_rows_by_period,
+    lead_time_bucket_dict,
 )
 from app.services.metric_service import classify_performance_level
 
@@ -301,11 +311,27 @@ def _max_generated_at(rows: list[MetricSnapshot]) -> datetime:
     return max(times)
 
 
+def _breakdown_to_buckets(
+    raw: dict[str, dict[str, int | None]],
+) -> dict[str, LeadTimeBreakdownBucket]:
+    return {
+        k: LeadTimeBreakdownBucket(
+            median_lead_time_minutes=v.get("median_lead_time_minutes"),
+            sample_count=int(v.get("sample_count") or 0),
+            dev_review_median_minutes=v.get("dev_review_median_minutes"),
+            release_wait_median_minutes=v.get("release_wait_median_minutes"),
+        )
+        for k, v in raw.items()
+    }
+
+
 def build_current_metrics_response(
     db: Session,
     *,
     repository_id: int | None = None,
     period_type: str = "WEEK",
+    lead_time_breakdown: LeadTimeBreakdownParam = LeadTimeBreakdownParam.none,
+    config: ConfigurationSchema | None = None,
 ) -> CurrentMetricsResponse:
     # Aggregate over trailing windows so UI periods map to meaningful horizons:
     # WEEK => ~30d (5 weeks), MONTH => ~quarter (3 months), QUARTER => ~year (4 quarters).
@@ -338,6 +364,8 @@ def build_current_metrics_response(
             mttr_alpha=None,
             release_wait_time=None,
             lead_time_diagnostics=None,
+            lead_time_by_branch=None,
+            lead_time_by_stream=None,
         )
 
     if len(recent) <= current_window_count:
@@ -444,6 +472,29 @@ def build_current_metrics_response(
         match_counts=lt_match_counts,
     )
 
+    by_branch: dict[str, LeadTimeBreakdownBucket] | None = None
+    by_stream: dict[str, LeadTimeBreakdownBucket] | None = None
+    if (
+        lead_time_breakdown != LeadTimeBreakdownParam.none
+        and config is not None
+    ):
+        rids = active_repository_ids(db, repository_id=repository_id)
+        lt_rows = fetch_lead_cohort_rows(
+            db,
+            period_start=combined_start,
+            period_end=combined_end,
+            repository_ids=rids,
+            config=config,
+        )
+        if lead_time_breakdown == LeadTimeBreakdownParam.branch:
+            by_branch = _breakdown_to_buckets(
+                lead_time_bucket_dict(lt_rows, mode="branch", config=config)
+            )
+        elif lead_time_breakdown == LeadTimeBreakdownParam.stream:
+            by_stream = _breakdown_to_buckets(
+                lead_time_bucket_dict(lt_rows, mode="stream", config=config)
+            )
+
     return CurrentMetricsResponse(
         deployment_frequency=MetricValue(
             value=dep,
@@ -515,6 +566,8 @@ def build_current_metrics_response(
             ),
         ),
         lead_time_diagnostics=lead_diag,
+        lead_time_by_branch=by_branch,
+        lead_time_by_stream=by_stream,
     )
 
 
@@ -527,6 +580,8 @@ def build_history_response(
     repository_id: int | None,
     page: int,
     size: int,
+    lead_time_breakdown: LeadTimeBreakdownParam = LeadTimeBreakdownParam.none,
+    config: ConfigurationSchema | None = None,
 ) -> HistoryResponse:
     size = max(1, min(size, 100))
     page = max(0, page)
@@ -549,6 +604,19 @@ def build_history_response(
     total_elements = len(all_periods)
     total_pages = (total_elements + size - 1) // size if total_elements else 0
     slice_ = all_periods[page * size : page * size + size]
+
+    batch_rows: list | None = None
+    if lead_time_breakdown != LeadTimeBreakdownParam.none and config is not None and slice_:
+        rids = active_repository_ids(db, repository_id=repository_id)
+        min_s = min(p[0] for p in slice_)
+        max_e = max(p[1] for p in slice_)
+        batch_rows = fetch_lead_cohort_rows_range(
+            db,
+            min_period_start=min_s,
+            max_period_end=max_e,
+            repository_ids=rids,
+            config=config,
+        )
 
     data: list[HistoryDataPoint] = []
     for period_start, period_end in slice_:
@@ -573,6 +641,18 @@ def build_history_response(
             mttr_alpha=mttr_alpha,
         )
         lt_sc = int(agg.get("lead_time_sample_count") or 0) if agg else 0
+        by_branch: dict[str, LeadTimeBreakdownBucket] | None = None
+        by_stream: dict[str, LeadTimeBreakdownBucket] | None = None
+        if lead_time_breakdown == LeadTimeBreakdownParam.branch and config is not None and batch_rows is not None:
+            pr = group_rows_by_period(batch_rows, period_start, period_end)
+            by_branch = _breakdown_to_buckets(
+                lead_time_bucket_dict(pr, mode="branch", config=config)
+            )
+        elif lead_time_breakdown == LeadTimeBreakdownParam.stream and config is not None and batch_rows is not None:
+            pr = group_rows_by_period(batch_rows, period_start, period_end)
+            by_stream = _breakdown_to_buckets(
+                lead_time_bucket_dict(pr, mode="stream", config=config)
+            )
         data.append(
             HistoryDataPoint(
                 period_start=period_start,
@@ -586,6 +666,8 @@ def build_history_response(
                 dev_review_median_minutes=dev_review,
                 release_wait_median_minutes=rw,
                 performance_level=levels,
+                lead_time_by_branch=by_branch,
+                lead_time_by_stream=by_stream,
             )
         )
 

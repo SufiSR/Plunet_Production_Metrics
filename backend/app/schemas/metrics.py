@@ -25,6 +25,21 @@ class PeriodType(str, Enum):
     QUARTER = "QUARTER"
 
 
+class LeadTimeBreakdownParam(str, Enum):
+    """Optional lead-time disaggregation (DEVOPS-510). ``none`` preserves legacy clients."""
+
+    none = "none"
+    branch = "branch"
+    stream = "stream"
+
+
+class LeadTimeBreakdownBucket(BaseModel):
+    median_lead_time_minutes: int | None = None
+    sample_count: int = 0
+    dev_review_median_minutes: int | None = None
+    release_wait_median_minutes: int | None = None
+
+
 class MetricValue(BaseModel):
     value: float | None
     unit: str
@@ -66,6 +81,8 @@ class CurrentMetricsResponse(BaseModel):
     dev_review_time: MetricValue | None = None
     release_wait_time: MetricValue | None = None
     lead_time_diagnostics: LeadTimeDiagnostics | None = None
+    lead_time_by_branch: dict[str, LeadTimeBreakdownBucket] | None = None
+    lead_time_by_stream: dict[str, LeadTimeBreakdownBucket] | None = None
 
 
 class PerformanceLevels(BaseModel):
@@ -88,6 +105,8 @@ class HistoryDataPoint(BaseModel):
     dev_review_median_minutes: int | None = None
     release_wait_median_minutes: int | None = None
     performance_level: PerformanceLevels
+    lead_time_by_branch: dict[str, LeadTimeBreakdownBucket] | None = None
+    lead_time_by_stream: dict[str, LeadTimeBreakdownBucket] | None = None
 
 
 class Pagination(BaseModel):

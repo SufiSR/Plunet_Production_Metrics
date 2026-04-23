@@ -10,7 +10,12 @@ from app.api.deps import RuntimeSettingsDep, SessionDep
 from app.models.release import Release
 from app.models.repository import Repository
 from app.models.production_bug import ProductionBug
-from app.schemas.metrics import CurrentMetricsResponse, HistoryResponse, PeriodType
+from app.schemas.metrics import (
+    CurrentMetricsResponse,
+    HistoryResponse,
+    LeadTimeBreakdownParam,
+    PeriodType,
+)
 from app.schemas.releases import (
     CustomerReleaseDrilldownItem,
     CustomerReleaseDrilldownListResponse,
@@ -96,14 +101,23 @@ def _mttr_date_window(
 @router.get("/current", response_model=CurrentMetricsResponse)
 def get_metrics_current(
     db: SessionDep,
+    settings: RuntimeSettingsDep,
     period_type: PeriodType = PeriodType.WEEK,
+    lead_time_breakdown: LeadTimeBreakdownParam = LeadTimeBreakdownParam.none,
 ) -> CurrentMetricsResponse:
-    return build_current_metrics_response(db, repository_id=None, period_type=period_type.value)
+    return build_current_metrics_response(
+        db,
+        repository_id=None,
+        period_type=period_type.value,
+        lead_time_breakdown=lead_time_breakdown,
+        config=settings,
+    )
 
 
 @router.get("/history", response_model=HistoryResponse)
 def get_metrics_history(
     db: SessionDep,
+    settings: RuntimeSettingsDep,
     period_type: PeriodType = PeriodType.WEEK,
     from_: Annotated[
         date | None,
@@ -116,6 +130,7 @@ def get_metrics_history(
     repository_id: Annotated[int | None, Query()] = None,
     page: Annotated[int, Query(ge=0)] = 0,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
+    lead_time_breakdown: LeadTimeBreakdownParam = LeadTimeBreakdownParam.none,
 ) -> HistoryResponse:
     if to is None:
         to = datetime.now(timezone.utc).date()
@@ -135,6 +150,8 @@ def get_metrics_history(
         repository_id=repository_id,
         page=page,
         size=size,
+        lead_time_breakdown=lead_time_breakdown,
+        config=settings,
     )
 
 
@@ -142,7 +159,9 @@ def get_metrics_history(
 def get_metrics_for_repository(
     repository_id: int,
     db: SessionDep,
+    settings: RuntimeSettingsDep,
     period_type: PeriodType = PeriodType.WEEK,
+    lead_time_breakdown: LeadTimeBreakdownParam = LeadTimeBreakdownParam.none,
 ) -> CurrentMetricsResponse:
     repo = db.get(Repository, repository_id)
     if repo is None:
@@ -151,7 +170,11 @@ def get_metrics_for_repository(
             detail=f"Repository with id {repository_id} not found",
         )
     return build_current_metrics_response(
-        db, repository_id=repository_id, period_type=period_type.value
+        db,
+        repository_id=repository_id,
+        period_type=period_type.value,
+        lead_time_breakdown=lead_time_breakdown,
+        config=settings,
     )
 
 

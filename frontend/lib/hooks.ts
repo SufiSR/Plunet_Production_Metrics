@@ -6,19 +6,27 @@ import { apiClient } from "./api-client";
 import { queryKeys } from "./query-keys";
 import { useUIStore } from "./store";
 
+function useEffectiveLeadBreakdown() {
+  return useUIStore((s) =>
+    s.trendOverviewMetric === "lead_time_for_changes" ? s.leadTimeBreakdown : "none"
+  );
+}
+
 export function useMetricsCurrent() {
   const period = useUIStore((s) => s.period);
+  const effectiveBreakdown = useEffectiveLeadBreakdown();
   return useQuery({
-    queryKey: queryKeys.metricsCurrent(period),
-    queryFn: () => apiClient.getMetricsCurrent(period),
+    queryKey: queryKeys.metricsCurrent(period, effectiveBreakdown),
+    queryFn: () => apiClient.getMetricsCurrent(period, effectiveBreakdown),
   });
 }
 
 export function useMetricsHistory() {
   const period = useUIStore((s) => s.period);
+  const effectiveBreakdown = useEffectiveLeadBreakdown();
   return useQuery({
-    queryKey: queryKeys.metricsHistory(period),
-    queryFn: () => apiClient.getMetricsHistory(period),
+    queryKey: queryKeys.metricsHistory(period, effectiveBreakdown),
+    queryFn: () => apiClient.getMetricsHistory(period, effectiveBreakdown),
   });
 }
 

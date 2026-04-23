@@ -96,6 +96,12 @@ def test_metrics_history_defaults(public_client: TestClient) -> None:
     assert body["pagination"]["page"] == 0
 
 
+def test_metrics_history_accepts_lead_time_breakdown_param(public_client: TestClient) -> None:
+    r = public_client.get("/api/metrics/history", params={"lead_time_breakdown": "stream"})
+    assert r.status_code == 200
+    assert r.json()["period_type"] == "WEEK"
+
+
 def test_metrics_history_default_horizon_depends_on_period_type(public_client: TestClient) -> None:
     to_date = date(2026, 4, 22)
     expected = {

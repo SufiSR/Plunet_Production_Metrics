@@ -2,6 +2,8 @@
 
 import { create } from "zustand";
 
+import type { LeadTimeBreakdown } from "@/types/api";
+
 export type PeriodType = "30d" | "quarterly" | "yearly";
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -19,6 +21,9 @@ interface UIState {
   trendOverviewMetric: TrendOverviewMetric;
   setTrendOverviewMetric: (m: TrendOverviewMetric) => void;
 
+  leadTimeBreakdown: LeadTimeBreakdown;
+  setLeadTimeBreakdown: (b: LeadTimeBreakdown) => void;
+
   activeMetricModal: string | null;
   openMetricModal: (metricKey: string) => void;
   closeMetricModal: () => void;
@@ -30,6 +35,9 @@ export const useUIStore = create<UIState>()((set) => ({
 
   trendOverviewMetric: "deployment_frequency",
   setTrendOverviewMetric: (m) => set({ trendOverviewMetric: m }),
+
+  leadTimeBreakdown: "none",
+  setLeadTimeBreakdown: (b) => set({ leadTimeBreakdown: b }),
 
   activeMetricModal: null,
   openMetricModal: (metricKey) => set({ activeMetricModal: metricKey }),

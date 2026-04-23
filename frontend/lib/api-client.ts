@@ -11,6 +11,7 @@ import type {
   MttrAlphaIncidentListResponse,
   MttrAlphaReleaseDrilldownListResponse,
   SyncStatusResponse,
+  LeadTimeBreakdown,
   PeriodType,
 } from "@/types/api";
 
@@ -41,6 +42,13 @@ const backendPeriodType: Record<PeriodType, "WEEK" | "MONTH" | "QUARTER"> = {
   quarterly: "MONTH",
   yearly: "QUARTER",
 };
+
+function _leadTimeBreakdownQuery(leadTimeBreakdown: LeadTimeBreakdown): string {
+  if (leadTimeBreakdown === "none") {
+    return "";
+  }
+  return `&lead_time_breakdown=${encodeURIComponent(leadTimeBreakdown)}`;
+}
 
 function mapMetric(raw: any, kind: "deploy" | "lead" | "cfr" | "mttr", periodTypeForCadence?: PeriodType) {
   if (!raw || typeof raw !== "object") {
@@ -113,6 +121,8 @@ function normalizeMetricsCurrent(raw: any, period: PeriodType): MetricsCurrentRe
     change_failure_rate: mapMetric(raw?.change_failure_rate, "cfr"),
     mttr_alpha: mapMetric(raw?.mttr_alpha ?? raw?.mttr, "mttr"),
     lead_time_diagnostics: raw?.lead_time_diagnostics ?? null,
+    lead_time_by_branch: raw?.lead_time_by_branch ?? null,
+    lead_time_by_stream: raw?.lead_time_by_stream ?? null,
   };
 }
 
@@ -162,6 +172,8 @@ function normalizeMetricsHistory(raw: any, period: PeriodType): MetricsHistoryRe
           typeof item?.mttr_alpha_minutes === "number"
             ? item.mttr_alpha_minutes
             : null,
+        lead_time_by_branch: item?.lead_time_by_branch ?? null,
+        lead_time_by_stream: item?.lead_time_by_stream ?? null,
       }))
     : [];
   return {
@@ -187,14 +199,14 @@ function normalizeSyncStatus(raw: any): SyncStatusResponse {
 }
 
 export const apiClient = {
-  getMetricsCurrent: (period: PeriodType) =>
+  getMetricsCurrent: (period: PeriodType, leadTimeBreakdown: LeadTimeBreakdown = "none") =>
     request<any>(
-      `/metrics/current?period_type=${backendPeriodType[period]}`
+      `/metrics/current?period_type=${backendPeriodType[period]}${_leadTimeBreakdownQuery(leadTimeBreakdown)}`
     ).then((raw) => normalizeMetricsCurrent(raw, period)),
 
-  getMetricsHistory: (period: PeriodType) =>
+  getMetricsHistory: (period: PeriodType, leadTimeBreakdown: LeadTimeBreakdown = "none") =>
     request<any>(
-      `/metrics/history?period_type=${backendPeriodType[period]}`
+      `/metrics/history?period_type=${backendPeriodType[period]}${_leadTimeBreakdownQuery(leadTimeBreakdown)}`
     ).then((raw) => normalizeMetricsHistory(raw, period)),
 
   getSyncStatus: () => request<any>("/sync/status").then(normalizeSyncStatus),
