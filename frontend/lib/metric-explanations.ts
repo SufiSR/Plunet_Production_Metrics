@@ -17,7 +17,7 @@ export const METRIC_EXPLANATIONS: Record<string, MetricExplanation> = {
     key: "deployment_frequency",
     title: "Deployment Frequency",
     description:
-      "How often the team deploys code to production, displayed as a weekly rate. Higher is better. While elite DORA teams deploy daily, a healthy rate for low-volume teams is 1+ deploy per week.",
+      "How often code reaches customer-facing production, normalized as a weekly rate for the selected dashboard period. This value is calculated from release tags that qualify as customer releases after repository and version filters are applied, then converted to deploys per week so periods remain comparable. Use this metric to judge delivery cadence, not release size: lower values can still be healthy for teams shipping larger, less frequent batches. Week-to-week changes usually reflect release planning, freeze windows, or batching decisions as much as engineering throughput.",
     unitLabel: "deploys / week",
     doraThresholds: {
       elite: "Multiple times per day",
@@ -45,7 +45,7 @@ export const METRIC_EXPLANATIONS: Record<string, MetricExplanation> = {
     key: "change_failure_rate",
     title: "Change Failure Rate",
     description:
-      "The percentage of deployments that cause a production failure requiring a hotfix or rollback. Lower is better.",
+      "The share of customer releases in the selected period that are linked to at least one production bug or failure signal, expressed as a percentage. It answers: out of all releases we shipped, how many introduced customer-impacting problems that required correction. Lower is better, but sample size matters: one problematic release can move the percentage sharply when release volume is low. Read this together with Deployment Frequency and MTTR Alpha to separate prevention quality from recovery quality.",
     unitLabel: "%",
     doraThresholds: {
       elite: "0–5%",
@@ -59,7 +59,7 @@ export const METRIC_EXPLANATIONS: Record<string, MetricExplanation> = {
     key: "mttr_alpha",
     title: "MTTR Alpha",
     description:
-      "Mean Time to Restore — the time it takes to recover from a production failure. Measured as time from the first failing commit to the first successful fix-deployment. Lower is better.",
+      "Median time to restore service after a production issue, measured from issue creation to the first customer release that includes the fix. This captures recovery effectiveness for incidents in the selected period and reflects how quickly the team returns users to a healthy state once a failure exists. Lower is better because shorter restoration windows reduce customer impact. Used with Change Failure Rate, this shows whether improvements come from safer releases, faster recovery, or both.",
     unitLabel: "minutes",
     doraThresholds: {
       elite: "Less than 1 hour",

@@ -3,7 +3,7 @@
 import { DoraBadge } from "./DoraBadge";
 import { useUIStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/date-utils";
-import type { DoraLevel, LeadTimeDiagnostics, MetricValue } from "@/types/api";
+import type { DoraLevel, MetricValue } from "@/types/api";
 
 interface MetricCardProps {
   metricKey: string;
@@ -13,7 +13,6 @@ interface MetricCardProps {
   isLoading: boolean;
   isError: boolean;
   generatedAt?: string;
-  leadTimeDiagnostics?: LeadTimeDiagnostics | null;
 }
 
 function formatValue(value: number | null, unit: string): {
@@ -46,16 +45,6 @@ function formatValue(value: number | null, unit: string): {
   return { main: value.toFixed(1), suffix: unit };
 }
 
-function formatLeadDiagLine(d: LeadTimeDiagnostics): string {
-  const parts = [`n=${d.sample_count}`];
-  const keys = Object.keys(d.match_counts ?? {}).sort();
-  for (const k of keys) {
-    const v = d.match_counts[k];
-    if (typeof v === "number" && v > 0) parts.push(`${k}: ${v}`);
-  }
-  return parts.join(" · ");
-}
-
 export function MetricCard({
   metricKey,
   label,
@@ -64,7 +53,6 @@ export function MetricCard({
   isLoading,
   isError,
   generatedAt,
-  leadTimeDiagnostics,
 }: MetricCardProps) {
   const openMetricModal = useUIStore((s: { openMetricModal: (key: string) => void }) => s.openMetricModal);
   const { main, suffix } = data
@@ -134,18 +122,6 @@ export function MetricCard({
             </span>
           )}
         </div>
-
-        {metricKey === "lead_time_for_changes" &&
-          leadTimeDiagnostics &&
-          !isLoading &&
-          !isError && (
-            <p
-              className="text-[9px] text-on-surface-variant mt-2 leading-snug line-clamp-2"
-              title={leadTimeDiagnostics.definition}
-            >
-              {formatLeadDiagLine(leadTimeDiagnostics)}
-            </p>
-          )}
 
         {/* Data freshness tooltip */}
         {generatedAt && (

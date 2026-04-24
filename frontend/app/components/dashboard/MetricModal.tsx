@@ -16,7 +16,17 @@ import { useMetricsCurrent, useMetricsHistory } from "@/lib/hooks";
 import { METRIC_EXPLANATIONS } from "@/lib/metric-explanations";
 import { DoraBadge } from "./DoraBadge";
 import { getChartColors } from "@/lib/chart-colors";
-import type { DoraLevel } from "@/types/api";
+import type { DoraLevel, LeadTimeDiagnostics, MetricsCurrentResponse } from "@/types/api";
+
+function formatLeadDiagLine(d: LeadTimeDiagnostics): string {
+  const parts = [`n=${d.sample_count}`];
+  const keys = Object.keys(d.match_counts ?? {}).sort();
+  for (const k of keys) {
+    const v = d.match_counts[k];
+    if (typeof v === "number" && v > 0) parts.push(`${k}: ${v}`);
+  }
+  return parts.join(" · ");
+}
 
 export function MetricModal() {
   const { activeMetricModal, closeMetricModal } = useUIStore();
@@ -34,6 +44,10 @@ export function MetricModal() {
   const metricData: MetricSlice | undefined = activeMetricModal && current
     ? (current as unknown as Record<string, MetricSlice>)[activeMetricModal]
     : undefined;
+  const leadTimeDiagnostics: LeadTimeDiagnostics | null =
+    activeMetricModal === "lead_time_for_changes"
+      ? ((current as MetricsCurrentResponse | undefined)?.lead_time_diagnostics ?? null)
+      : null;
 
   const sparklineData =
     history?.data_points?.map((p) => ({
@@ -127,6 +141,14 @@ export function MetricModal() {
           <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
             {explanation.description}
           </p>
+          {leadTimeDiagnostics && (
+            <p
+              className="text-xs text-on-surface-variant leading-relaxed mb-6"
+              title={leadTimeDiagnostics.definition}
+            >
+              {formatLeadDiagLine(leadTimeDiagnostics)}
+            </p>
+          )}
 
           {/* DORA thresholds */}
           <div className="mb-6 space-y-1.5">
