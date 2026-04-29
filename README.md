@@ -36,6 +36,8 @@ The system runs a **Daily Data Refresh** (typically scheduled for 02:00 AM) that
 3. **Cross-System Resolution**: Maps Jira bugs to GitLab releases for CFR and MTTR metrics.
 4. **Snapshot Generation**: Pre-calculates metric snapshots for the dashboard to read efficiently.
 
+For full implementation details (source-to-table mappings, derivation rules, and exact metric formulas), see `documentation/PIPELINE_AND_METRICS_DEEP_DIVE.md`.
+
 ## 🗂 Project Structure
 
 ```text
@@ -50,7 +52,8 @@ dora-metrics-server/
 │   ├── app/                  # Next.js App Router pages and components
 │   ├── lib/                  # Utilities, hooks, and API client
 │   └── types/                # TypeScript type definitions
-├── project_definition_2/     # Canonical architecture and specification docs
+├── documentation/            # Current implementation documentation
+├── project_definition_2/     # Legacy specification/reference documents (partially outdated)
 ├── configuration.yml         # Application bootstrap configuration
 └── docker-compose.yml        # Local development and deployment orchestration
 ```
@@ -116,14 +119,13 @@ The frontend will be available at `http://localhost:3000`.
 
 ## 📖 Documentation Reference
 
-The active product specification, database schema, and architectural decisions are thoroughly documented in the `project_definition_2/` directory. When contributing, always refer to these documents as the source of truth:
+Current implementation documentation lives in `documentation/`:
 
-- `project_definition_2/README.md`
-- `project_definition_2/dora-metrics-app-documentation.md`
-- `project_definition_2/api-specification-documentation.md`
-- `project_definition_2/database-schema-documentation.md`
-- `project_definition_2/new_kpis.md`
-- `project_definition_2/testing-strategy-documentation.md`
+- `documentation/APPLICATION_DOCUMENTATION.md`
+- `documentation/PIPELINE_AND_METRICS_DEEP_DIVE.md`
+- `documentation/PROJECT_DEFINITION_2_REVIEW.md`
+
+Legacy planning/spec artifacts remain in `project_definition_2/`, but parts are outdated and should be treated as historical context rather than implementation source of truth.
 
 ## 🤝 Contributing
 

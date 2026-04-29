@@ -40,3 +40,8 @@ terminals/
 
 # Logs
 *.log
+
+# Documentation_old
+docs/
+POC/
+project_definition_2/

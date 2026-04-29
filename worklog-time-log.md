@@ -186,3 +186,5 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | adhoc | implementation | 2026-04-14 12:07 | 2026-04-14 12:20 | 13m | Implement dual-display deployment frequency UX for sparse data |
 | adhoc | investigation | 2026-04-14 12:20 | 2026-04-14 12:28 | 8m | Fix current metric endpoint picking up incomplete current-week windows |
 | adhoc | implementation | 2026-04-14 12:28 | 2026-04-14 13:16 | 48m | Update backend metrics public service to aggregate the entire active period rather than just the latest bucket |
+| DEVOPS-429 | planning | 2026-04-29 10:01 | 2026-04-29 10:05 | 4m | Documentation overhaul session completed |
+| DEVOPS-429 | planning | 2026-04-29 10:56 | 2026-04-29 10:58 | 2m | Pipeline documentation deep-dive completed |
