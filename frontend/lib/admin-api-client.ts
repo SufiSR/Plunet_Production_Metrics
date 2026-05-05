@@ -5,6 +5,7 @@ import type {
   AdminRawTableResponse,
   AdminRawTableSortDirection,
   DataHealthResponse,
+  WorklogAuthorListResponse,
   LoginRequest,
   LoginResponse,
   MeResponse,
@@ -113,5 +114,14 @@ export const adminApiClient = {
     if (params.sort_dir) query.set("sort_dir", params.sort_dir);
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return adminRequest<AdminRawTableResponse>(`/admin/raw-tables/${params.table}${suffix}`);
+  },
+
+  getWorklogAuthors: (params?: { page?: number; size?: number }) => {
+    const query = new URLSearchParams();
+    query.set("page", String(params?.page ?? 0));
+    query.set("size", String(params?.size ?? 500));
+    return adminRequest<WorklogAuthorListResponse>(
+      `/admin/jira/worklog-authors?${query.toString()}`,
+    );
   },
 };

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select
 
 from app.api.deps import RuntimeSettingsDep, SessionDep
+from app.models.app_configuration import AppConfiguration
 from app.models.release import Release
 from app.models.repository import Repository
 from app.models.production_bug import ProductionBug
@@ -35,6 +36,7 @@ from app.schemas.releases import (
     ReleaseProductionBugRow,
     ReleaseTimelineItem,
     ReleaseTimelineResponse,
+    ReleaseWorklogHoursResponse,
 )
 from app.services.metrics_public_service import (
     build_current_metrics_response,
@@ -45,6 +47,7 @@ from app.services.mttr_alpha_stats import (
     median_from_sorted,
     percentiles_for_mttr_minutes,
 )
+from app.services.release_worklog_hours_service import build_release_worklog_hours_response
 from app.services.release_drilldown_service import (
     build_gitlab_compare_url,
     build_jira_browse_url,
@@ -219,6 +222,31 @@ def get_release_timeline(
         for release, repo in rows
     ]
     return ReleaseTimelineResponse(items=items, total=len(items))
+
+
+@router.get("/releases/worklog-hours", response_model=ReleaseWorklogHoursResponse)
+def get_release_worklog_hours(
+    db: SessionDep,
+    repository_id: Annotated[int, Query(ge=1)],
+    tag_name: Annotated[str, Query(min_length=1, max_length=255)],
+) -> ReleaseWorklogHoursResponse:
+    """Aggregate Jira worklog time for bugs linked to a release tag (see BugRelease), by role and team."""
+    app_row = db.get(AppConfiguration, 1)
+    settings_json: dict = (
+        dict(app_row.settings_json) if app_row and isinstance(app_row.settings_json, dict) else {}
+    )
+    body = build_release_worklog_hours_response(
+        db,
+        repository_id=repository_id,
+        tag_name=tag_name,
+        settings_json=settings_json,
+    )
+    if body is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No release found for repository_id={repository_id} tag_name={tag_name!r}",
+        )
+    return body
 
 
 @router.get("/releases/customer/drilldown", response_model=CustomerReleaseDrilldownListResponse)

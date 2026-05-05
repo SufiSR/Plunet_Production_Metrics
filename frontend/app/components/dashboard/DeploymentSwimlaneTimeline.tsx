@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useReleaseTimeline } from "@/lib/hooks";
+import { useReleaseTimeline, useReleaseWorklogHours } from "@/lib/hooks";
 import type { ReleaseTimelineItem } from "@/types/api";
 
 type Lane = "major" | "minor" | "patch" | "unknown";
@@ -55,9 +55,17 @@ function dotColor(item: ReleaseTimelineItem): string {
   return `hsl(${hue} 78% ${lightness}%)`;
 }
 
+function formatHours(n: number): string {
+  return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
 export function DeploymentSwimlaneTimeline() {
   const { data, isLoading, isError } = useReleaseTimeline();
   const [selected, setSelected] = useState<ReleaseTimelineItem | null>(null);
+  const worklogQ = useReleaseWorklogHours(
+    selected?.repository_id ?? null,
+    selected?.tag_name ?? null,
+  );
 
   const events = useMemo(() => {
     const raw = data?.items ?? [];
@@ -219,6 +227,48 @@ export function DeploymentSwimlaneTimeline() {
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-on-surface-variant">Customer Release</p>
                   <p className="text-on-surface">{selected.customer_release ? "Yes" : "No"}</p>
+                </div>
+                <div className="md:col-span-2 border-t border-outline-variant/40 pt-3 mt-1 space-y-3">
+                  <p className="text-[11px] uppercase tracking-wider text-on-surface-variant">
+                    Worklog (bugs linked to this tag)
+                  </p>
+                  {worklogQ.isFetching && (
+                    <p className="text-xs text-on-surface-variant">Loading worklog aggregates…</p>
+                  )}
+                  {worklogQ.isError && (
+                    <p className="text-xs text-error">Could not load worklog aggregates.</p>
+                  )}
+                  {worklogQ.data && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-on-surface">By role (hours)</p>
+                        <ul className="text-xs text-on-surface space-y-0.5 font-mono">
+                          <li>PM: {formatHours(worklogQ.data.hours_by_role.pm)}</li>
+                          <li>DEV: {formatHours(worklogQ.data.hours_by_role.dev)}</li>
+                          <li>QA: {formatHours(worklogQ.data.hours_by_role.qa)}</li>
+                          <li>Unmapped role: {formatHours(worklogQ.data.hours_by_role.unmapped)}</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-on-surface">By team (hours)</p>
+                        {worklogQ.data.hours_by_team.length === 0 ? (
+                          <p className="text-xs text-on-surface-variant">No team-mapped hours yet.</p>
+                        ) : (
+                          <ul className="text-xs text-on-surface space-y-0.5 font-mono">
+                            {worklogQ.data.hours_by_team.map((row) => (
+                              <li key={row.team}>
+                                {row.team}: {formatHours(row.hours)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <p className="text-[10px] text-on-surface-variant pt-1 font-mono">
+                          Unmapped team: {formatHours(worklogQ.data.unmapped_team_hours)} h · Total:{" "}
+                          {formatHours(worklogQ.data.total_hours)} h
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

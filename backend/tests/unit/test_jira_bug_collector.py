@@ -147,13 +147,14 @@ def test_parse_worklog_entry() -> None:
             "id": "1234",
             "timeSpentSeconds": 7200,
             "started": "2026-03-31T09:00:00.000+0000",
-            "author": {"displayName": "A User"},
+            "author": {"displayName": "A User", "accountId": "acc-9"},
         }
     )
     assert parsed is not None
     assert parsed["jira_worklog_id"] == "1234"
     assert parsed["time_spent_seconds"] == 7200
     assert parsed["author"] == "A User"
+    assert parsed["jira_account_id"] == "acc-9"
 
 
 def test_first_ready_for_qa_at_uses_earliest_transition() -> None:
@@ -479,6 +480,7 @@ def test_sync_issue_worklogs_removes_entries_not_in_payload() -> None:
             parsed_worklogs=[
                 {
                     "jira_worklog_id": "keep",
+                    "jira_account_id": "acct-1",
                     "author": "new",
                     "started": t,
                     "time_spent_seconds": 99,
@@ -492,6 +494,7 @@ def test_sync_issue_worklogs_removes_entries_not_in_payload() -> None:
         ).one()
     assert ids == {"keep"}
     assert wl_keep.author == "new"
+    assert wl_keep.jira_account_id == "acct-1"
     assert wl_keep.time_spent_seconds == 99
 
 

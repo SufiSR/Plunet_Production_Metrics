@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+from app.schemas.jira_worklog_assignments import JiraWorklogUserAssignment
 
 
 class AdminConfigResponse(BaseModel):
@@ -27,6 +29,8 @@ class AdminConfigResponse(BaseModel):
     sync_cron_minute: int
     lookback_days: int
     notifications_webhook_url: str | None
+    jira_worklog_user_assignments: list[JiraWorklogUserAssignment] = Field(default_factory=list)
+    jira_worklog_author_denylist: list[str] = Field(default_factory=list)
 
 
 class AdminConfigPatch(BaseModel):
@@ -51,6 +55,23 @@ class AdminConfigPatch(BaseModel):
     sync_cron_minute: int | None = Field(default=None, ge=0, le=59)
     lookback_days: int | None = Field(default=None, ge=1)
     notifications_webhook_url: str | None = None
+    jira_worklog_user_assignments: list[JiraWorklogUserAssignment] | None = None
+    jira_worklog_author_denylist: list[str] | None = None
+
+    @field_validator("jira_worklog_user_assignments")
+    @classmethod
+    def _unique_assignment_account_ids(
+        cls, v: list[JiraWorklogUserAssignment] | None
+    ) -> list[JiraWorklogUserAssignment] | None:
+        if v is None:
+            return None
+        seen: set[str] = set()
+        for a in v:
+            aid = a.jira_account_id.strip()
+            if aid in seen:
+                raise ValueError(f"Duplicate jira_worklog_user_assignments entry: {aid}")
+            seen.add(aid)
+        return v
 
 
 class WebhookTestRequest(BaseModel):

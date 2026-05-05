@@ -8,6 +8,8 @@ import app.services.admin_config_service as acs
 import app.services.config_service as config_service
 from app.models.app_configuration import AppConfiguration
 from app.models.base import Base
+from pydantic import ValidationError
+
 from app.schemas.admin_config import AdminConfigPatch
 
 
@@ -69,6 +71,8 @@ def test_build_admin_config_response(monkeypatch: pytest.MonkeyPatch) -> None:
         resp = acs.build_admin_config_response(db)
     assert resp.gitlab_url == "https://db-gl.example"
     assert resp.jira_username == "db@user.test"
+    assert resp.jira_worklog_user_assignments == []
+    assert resp.jira_worklog_author_denylist == []
     assert resp.gitlab_project_paths == ["a/b"]
     assert resp.exclude_release_only_mrs_from_lead_time is True
     assert " release" in resp.release_mr_title_markers
@@ -109,6 +113,43 @@ def test_patch_admin_configuration_updates_settings(
             "release",
             "hotfix-release",
         ]
+
+
+def test_patch_admin_configuration_stores_worklog_assignments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
+    monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
+    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.delenv("GITLAB_BASE_URL", raising=False)
+    with _session() as db:
+        db.add(AppConfiguration(id=1, settings_json={}))
+        db.commit()
+        acs.patch_admin_configuration(
+            db,
+            AdminConfigPatch(
+                jira_worklog_user_assignments=[
+                    {"jira_account_id": "acc-1", "role": "dev", "team": "Core"},
+                ],
+                jira_worklog_author_denylist=["bot-acc"],
+            ),
+        )
+        row = db.get(AppConfiguration, 1)
+        assert row is not None
+        assert row.settings_json["jira"]["jira_worklog_user_assignments"] == [
+            {"jira_account_id": "acc-1", "role": "dev", "team": "Core"},
+        ]
+        assert row.settings_json["jira"]["jira_worklog_author_denylist"] == ["bot-acc"]
+
+
+def test_admin_config_patch_rejects_duplicate_assignment_account_ids() -> None:
+    with pytest.raises(ValidationError):
+        AdminConfigPatch(
+            jira_worklog_user_assignments=[
+                {"jira_account_id": "dup", "role": "dev", "team": "A"},
+                {"jira_account_id": "dup", "role": "qa", "team": "B"},
+            ],
+        )
 
 
 def test_patch_admin_configuration_encrypts_tokens(

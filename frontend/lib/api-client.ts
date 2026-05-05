@@ -7,6 +7,7 @@ import type {
   ReleaseProductionBugListResponse,
   RepositoriesResponse,
   ReleaseTimelineResponse,
+  ReleaseWorklogHoursResponse,
   MttrAlphaSummaryResponse,
   MttrAlphaIncidentListResponse,
   MttrAlphaReleaseDrilldownListResponse,
@@ -286,6 +287,15 @@ export const apiClient = {
 
   getReleaseTimeline: () =>
     request<ReleaseTimelineResponse>("/metrics/releases/timeline?min_major=8&limit=3000"),
+
+  getReleaseWorklogHours: (opts: { repositoryId: number; tagName: string }) => {
+    const p = new URLSearchParams();
+    p.set("repository_id", String(opts.repositoryId));
+    p.set("tag_name", opts.tagName);
+    return request<ReleaseWorklogHoursResponse>(
+      `/metrics/releases/worklog-hours?${p.toString()}`,
+    );
+  },
 
   getReleaseDrilldown: (opts: {
     page?: number;

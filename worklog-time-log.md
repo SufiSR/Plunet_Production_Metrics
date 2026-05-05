@@ -1,3 +1,5 @@
+| DEVOPS-523 | implementation | 2026-05-05 09:11 | 2026-05-05 09:12 | 1m | issue_worklog.jira_account_id migration, collector parse/sync, tests, raw table column |
+| DEVOPS-524 | implementation | 2026-05-05 09:12 | 2026-05-05 09:21 | 9m | DEVOPS-524–528 contiguous session: schemas/settings `jira_worklog_user_assignments` + denylist, admin patch + `GET /admin/jira/worklog-authors`, release worklog-hours aggregation API, admin user-assignments UI + swimlane worklog-hours panel, docs api-spec (`/metrics/releases/worklog-hours`), unit tests (`admin_config_service`, `release_worklog_hours_service`, `public_routes`) |
 | DEVOPS-517 | implementation | 2026-04-23 16:00 | 2026-04-23 16:45 | 45m | Extended integration tests: collectors on Postgres (stubbed GitLab/Jira clients), API validation/admin/webhook (respx), `session_factory` fixture, README inventory, `respx` in requirements; Jira worklog 45m on subtask |
 | DEVOPS-517 | implementation | 2026-04-23 15:00 | 2026-04-23 15:50 | 50m | Integration test plan: README + conftest (backend-root alembic, shared `api_client`), DB/schema assertions, public API + admin smoke; `pyproject` pytest marker `integration`; testing-strategy doc alignment; Jira worklog 50m on subtask |
 | DEVOPS-446 | jira-update | 2026-04-23 17:15 | 2026-04-23 17:35 | 20m | Jira comment: backend unit test coverage snapshot (95% on `app` via `pytest tests/unit/ --cov=app`, 4,049 stmts / 215 miss / 277 tests); Jira worklog 20m; align with `worklog` started time if needed |
@@ -188,3 +190,7 @@ Never log to Jira until the entry is finalized (no OPEN or — remaining).
 | adhoc | implementation | 2026-04-14 12:28 | 2026-04-14 13:16 | 48m | Update backend metrics public service to aggregate the entire active period rather than just the latest bucket |
 | DEVOPS-429 | planning | 2026-04-29 10:01 | 2026-04-29 10:05 | 4m | Documentation overhaul session completed |
 | DEVOPS-429 | planning | 2026-04-29 10:56 | 2026-04-29 10:58 | 2m | Pipeline documentation deep-dive completed |
+| DEVOPS-429 | implementation | 2026-04-29 11:04 | 2026-04-29 11:05 | 2m | Remove docs and POC from Git tracking completed |
+| DEVOPS-429 | implementation | 2026-04-29 11:06 | 2026-04-29 11:08 | 2m | Update Confluence documentation pages completed |
+| DEVOPS-429 | implementation | 2026-04-29 11:09 | 2026-04-29 11:10 | 1m | Update and move backend Confluence page completed |
+| DEVOPS-429 | implementation | 2026-04-29 11:11 | 2026-04-29 11:12 | 1m | Restore backend Confluence visualizations completed |

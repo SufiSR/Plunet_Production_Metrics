@@ -9,6 +9,10 @@ from app.models.app_configuration import AppConfiguration
 from app.scheduler import reschedule_nightly_sync
 from app.schemas.admin_config import AdminConfigPatch, AdminConfigResponse
 from app.services import config_service
+from app.services.jira_worklog_settings import (
+    read_worklog_assignments_from_settings,
+    read_worklog_denylist_from_settings,
+)
 
 
 def _env_text(name: str) -> str | None:
@@ -64,6 +68,8 @@ def build_admin_config_response(db: Session) -> AdminConfigResponse:
         sync_cron_minute=cfg.backend.sync_cron_minute,
         lookback_days=cfg.backend.lookback_days,
         notifications_webhook_url=cfg.notifications.webhook_url,
+        jira_worklog_user_assignments=read_worklog_assignments_from_settings(settings_json),
+        jira_worklog_author_denylist=read_worklog_denylist_from_settings(settings_json),
     )
 
 
@@ -136,6 +142,16 @@ def patch_admin_configuration(db: Session, patch: AdminConfigPatch) -> AdminConf
         jr["production_bug_indicator_cf_ids"] = data.pop("production_bug_indicator_cf_ids")
     if "mttr_alpha_priorities" in data:
         jr["mttr_alpha_priorities"] = data.pop("mttr_alpha_priorities")
+    if "jira_worklog_user_assignments" in data:
+        assign = data.pop("jira_worklog_user_assignments")
+        if assign is not None:
+            jr["jira_worklog_user_assignments"] = [
+                a.model_dump() if hasattr(a, "model_dump") else dict(a) for a in assign
+            ]
+    if "jira_worklog_author_denylist" in data:
+        deny = data.pop("jira_worklog_author_denylist")
+        if deny is not None:
+            jr["jira_worklog_author_denylist"] = list(deny)
     if "sync_cron_hour" in data:
         bk["sync_cron_hour"] = data.pop("sync_cron_hour")
     if "sync_cron_minute" in data:

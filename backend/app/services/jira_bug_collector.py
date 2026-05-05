@@ -303,11 +303,15 @@ def parse_worklog_entry(raw: dict[str, Any]) -> dict[str, Any] | None:
         return None
     author_payload = raw.get("author")
     author = None
+    jira_account_id = None
     if isinstance(author_payload, dict):
         author = str(author_payload.get("displayName") or "").strip() or None
+        aid = str(author_payload.get("accountId") or "").strip()
+        jira_account_id = aid or None
     started = _parse_dt(str(raw.get("started") or ""))
     return {
         "jira_worklog_id": jira_worklog_id,
+        "jira_account_id": jira_account_id,
         "author": author,
         "started": started,
         "time_spent_seconds": time_spent_seconds,
@@ -566,6 +570,7 @@ def _sync_issue_worklogs(
         incoming = incoming_by_id.get(wl.jira_worklog_id)
         if incoming is not None:
             wl.author = incoming["author"]
+            wl.jira_account_id = incoming["jira_account_id"]
             wl.started = incoming["started"]
             wl.time_spent_seconds = incoming["time_spent_seconds"]
 
@@ -575,6 +580,7 @@ def _sync_issue_worklogs(
                 IssueWorklog(
                     bug_id=bug_id,
                     jira_worklog_id=data["jira_worklog_id"],
+                    jira_account_id=data["jira_account_id"],
                     author=data["author"],
                     started=data["started"],
                     time_spent_seconds=data["time_spent_seconds"],

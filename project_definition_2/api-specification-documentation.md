@@ -38,6 +38,7 @@ Phase 1 may map `**mttr`** in the public API to **MTTR Alpha** (minutes) for the
 | GET    | `/metrics/repository/{id}` | Repository-specific current metrics      | No        |
 | GET    | `/repositories`            | List of monitored repositories           | No        |
 | GET    | `/sync/status`             | Status of last synchronization           | No        |
+| GET    | `/metrics/releases/worklog-hours` | Aggregate worklog hours for bugs linked to tag (`repository_id`,`tag_name`); by role & team | No        |
 | GET    | `/health`                  | Health check                             | No        |
 
 
@@ -50,10 +51,22 @@ Phase 1 may map `**mttr`** in the public API to **MTTR Alpha** (minutes) for the
 | POST   | `/auth/logout`  | Invalidate session / clear cookie                                                                         |
 | GET    | `/auth/me`      | Current principal (`role`: `viewer` is unauthenticated default when not used; `admin` when session valid) |
 | GET    | `/admin/config` | Full effective config for forms; **secrets masked**                                                       |
-| PATCH  | `/admin/config` | Partial update of GitLab/Jira/scheduler settings; new tokens replace stored secrets                       |
+| PATCH  | `/admin/config` | Partial update of GitLab/Jira/scheduler settings; new tokens replace stored secrets; optionally `jira_worklog_user_assignments` and `jira_worklog_author_denylist` (see below)                       |
+| GET    | `/admin/jira/worklog-authors` | Distinct worklog authors from `issue_worklog` excluding denylisted Jira account IDs (paginated)          |
 
 
 **Rules:** `GET/PATCH /admin/config` and `POST /auth/logout` require a valid **Admin** session. Unauthenticated requests receive **401 Unauthorized**. Viewers never call these routes from the main dashboard.
+
+### Jira worklog assignment settings (persisted in `AppConfiguration.settings_json`)
+
+These keys live under **`jira`** in `settings_json` (not necessarily mirrored in YAML env defaults):
+
+| Key | Shape | Purpose |
+| --- | ----- | ------- |
+| `jira_worklog_user_assignments` | Array of `{ "jira_account_id": string, "role": "pm" \| "dev" \| "qa", "team": string }`; **unique `jira_account_id`** per array | Maps Jira authors to department role and team for aggregations. |
+| `jira_worklog_author_denylist` | Array of Jira **`accountId`** strings (exact match) | Service/automation authors: omitted from **`GET /admin/jira/worklog-authors`** and **excluded entirely** from **`GET /metrics/releases/worklog-hours`** totals when `jira_account_id` matches. |
+
+Semantics: aggregates include **all** worklog seconds on bugs linked via `BugRelease` to the tag (no calendar window). If one bug maps to **multiple** releases, each tag view includes **full** worklog on that bug (expected double-count **across** tags).
 
 ---
 

@@ -147,6 +147,27 @@ export interface ReleaseTimelineResponse {
   total: number;
 }
 
+export interface ReleaseWorklogHoursByRole {
+  pm: number;
+  dev: number;
+  qa: number;
+  unmapped: number;
+}
+
+export interface ReleaseWorklogTeamHoursRow {
+  team: string;
+  hours: number;
+}
+
+export interface ReleaseWorklogHoursResponse {
+  repository_id: number;
+  tag_name: string;
+  hours_by_role: ReleaseWorklogHoursByRole;
+  hours_by_team: ReleaseWorklogTeamHoursRow[];
+  unmapped_team_hours: number;
+  total_hours: number;
+}
+
 export interface OffsetPagination {
   page: number;
   size: number;

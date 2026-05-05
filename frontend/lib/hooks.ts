@@ -53,6 +53,24 @@ export function useReleaseTimeline() {
   });
 }
 
+export function useReleaseWorklogHours(
+  repositoryId: number | null,
+  tagName: string | null,
+) {
+  return useQuery({
+    queryKey:
+      repositoryId != null && tagName
+        ? queryKeys.releaseWorklogHours(repositoryId, tagName)
+        : ["metrics", "releases", "worklog-hours", "disabled"],
+    queryFn: () =>
+      apiClient.getReleaseWorklogHours({
+        repositoryId: repositoryId!,
+        tagName: tagName!,
+      }),
+    enabled: repositoryId != null && Boolean(tagName),
+  });
+}
+
 export function useReleaseDrilldown(
   page: number,
   repositoryId: number | null | undefined,

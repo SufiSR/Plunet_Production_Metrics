@@ -160,6 +160,7 @@ def _merge_request_spec() -> TableSpec:
 def _issue_worklog_spec() -> TableSpec:
     columns = [
         TableColumnSpec("bug_jira_key", "Bug Jira Key", ProductionBug.jira_key),
+        TableColumnSpec("jira_account_id", "Jira Account ID", IssueWorklog.jira_account_id),
         TableColumnSpec("author", "Author", IssueWorklog.author),
         TableColumnSpec("started", "Started", IssueWorklog.started),
         TableColumnSpec("time_spent_seconds", "Time Spent (s)", IssueWorklog.time_spent_seconds),

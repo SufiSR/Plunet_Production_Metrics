@@ -203,3 +203,11 @@ def test_release_timeline_contains_release_events(public_client: TestClient) -> 
     assert body["items"][0]["tag_name"] == "v10.2.3"
     assert body["items"][0]["customer_release"] is True
     assert body["items"][0]["repository_path"] == "dev/plunet"
+
+
+def test_release_worklog_hours_not_found(public_client: TestClient) -> None:
+    response = public_client.get(
+        "/api/metrics/releases/worklog-hours",
+        params={"repository_id": 1, "tag_name": "v0.0.0"},
+    )
+    assert response.status_code == 404

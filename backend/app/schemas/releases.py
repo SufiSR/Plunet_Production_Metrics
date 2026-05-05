@@ -21,6 +21,27 @@ class ReleaseTimelineResponse(BaseModel):
     total: int
 
 
+class ReleaseWorklogHoursByRole(BaseModel):
+    pm: float
+    dev: float
+    qa: float
+    unmapped: float
+
+
+class ReleaseWorklogTeamHoursRow(BaseModel):
+    team: str
+    hours: float
+
+
+class ReleaseWorklogHoursResponse(BaseModel):
+    repository_id: int
+    tag_name: str
+    hours_by_role: ReleaseWorklogHoursByRole
+    hours_by_team: list[ReleaseWorklogTeamHoursRow]
+    unmapped_team_hours: float
+    total_hours: float
+
+
 class OffsetPagination(BaseModel):
     page: int = Field(ge=0)
     size: int = Field(ge=1)

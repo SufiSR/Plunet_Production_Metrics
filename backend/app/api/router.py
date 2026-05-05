@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.api import (
     admin_config,
     admin_data_health,
+    admin_jira_worklog,
     admin_raw_tables,
     auth,
     metrics_public,
@@ -21,6 +22,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_config.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_data_health.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_raw_tables.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_jira_worklog.router, prefix="/admin", tags=["admin"])
 api_router.include_router(metrics_public.router, prefix="/metrics", tags=["metrics"])
 api_router.include_router(repositories_public.router, prefix="/repositories", tags=["repositories"])
 api_router.include_router(sync_public.router, prefix="/sync", tags=["sync"])

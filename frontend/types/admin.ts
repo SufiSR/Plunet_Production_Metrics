@@ -15,6 +15,29 @@ export interface MeResponse {
   username: string | null;
 }
 
+export type WorklogRole = "pm" | "dev" | "qa";
+
+export interface JiraWorklogUserAssignment {
+  jira_account_id: string;
+  role: WorklogRole;
+  team: string;
+}
+
+export interface WorklogAuthorListItem {
+  jira_account_id: string | null;
+  author: string | null;
+}
+
+export interface WorklogAuthorListResponse {
+  items: WorklogAuthorListItem[];
+  page: number;
+  size: number;
+  total_elements: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
 export interface AdminConfigResponse {
   environment: string;
   gitlab_url: string;
@@ -37,6 +60,8 @@ export interface AdminConfigResponse {
   sync_cron_minute: number;
   lookback_days: number;
   notifications_webhook_url: string | null;
+  jira_worklog_user_assignments: JiraWorklogUserAssignment[];
+  jira_worklog_author_denylist: string[];
 }
 
 export interface AdminConfigPatch {
@@ -61,6 +86,8 @@ export interface AdminConfigPatch {
   sync_cron_minute?: number;
   lookback_days?: number;
   notifications_webhook_url?: string | null;
+  jira_worklog_user_assignments?: JiraWorklogUserAssignment[];
+  jira_worklog_author_denylist?: string[];
 }
 
 export interface WebhookTestRequest {

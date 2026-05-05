@@ -14,6 +14,9 @@ export const queryKeys = {
 
   releaseTimeline: () => ["metrics", "releases", "timeline"] as const,
 
+  releaseWorklogHours: (repositoryId: number, tagName: string) =>
+    ["metrics", "releases", "worklog-hours", repositoryId, tagName] as const,
+
   releaseDrilldown: (page: number, repositoryId: number | null | undefined) =>
     ["metrics", "releases", "customer", "drilldown", page, repositoryId ?? "all"] as const,
 
