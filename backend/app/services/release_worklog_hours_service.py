@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.bug_release import BugRelease
 from app.models.issue_worklog import IssueWorklog
+from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.release import Release
 from app.schemas.jira_worklog_assignments import JiraWorklogUserAssignment
@@ -42,11 +42,18 @@ def _worklog_rows_for_release_tag(
         select(wl_time, wl_aid, wl_author)
         .select_from(IssueWorklog)
         .join(ProductionBug, ProductionBug.id == IssueWorklog.bug_id)
-        .join(BugRelease, BugRelease.bug_id == ProductionBug.id)
-        .join(Release, Release.id == BugRelease.release_id)
         .where(
-            Release.repository_id == repository_id,
-            Release.tag_name == tag_name,
+            ProductionBug.id.in_(
+                select(ProductionBug.id)
+                .select_from(ProductionBug)
+                .join(MergeRequest, MergeRequest.jira_key == ProductionBug.jira_key)
+                .where(
+                    MergeRequest.repository_id == repository_id,
+                    MergeRequest.first_customer_tag == tag_name,
+                    MergeRequest.jira_key.is_not(None),
+                )
+                .distinct()
+            )
         )
     )
     if deny_ids:

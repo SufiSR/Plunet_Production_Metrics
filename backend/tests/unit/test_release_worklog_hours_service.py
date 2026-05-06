@@ -6,10 +6,10 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.base import Base
-from app.models.repository import Repository
-from app.models.bug_release import BugRelease
 from app.models.issue_worklog import IssueWorklog
+from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
+from app.models.repository import Repository
 from app.models.release import Release
 from app.services.release_worklog_hours_service import build_release_worklog_hours_response
 
@@ -84,7 +84,24 @@ def test_build_release_worklog_hours_aggregates_role_and_team_and_denylist() -> 
         )
         db.add(rel)
         db.flush()
-        db.add(BugRelease(bug_id=1, release_id=1))
+        db.add(
+            MergeRequest(
+                id=1,
+                repository_id=1,
+                gitlab_mr_id=101,
+                title="Fix",
+                description=None,
+                author="dev",
+                source_branch="feature/x",
+                target_branch="main",
+                created_at=t,
+                first_commit_at=t,
+                merged_at=t,
+                jira_key="BUG-1",
+                first_customer_tag="v9.1.0",
+                first_customer_tag_date=t,
+            )
+        )
         db.add_all(
             [
                 IssueWorklog(
@@ -202,7 +219,24 @@ def test_build_release_worklog_hours_falls_back_to_author_assignment_when_accoun
             )
         )
         db.flush()
-        db.add(BugRelease(bug_id=1, release_id=1))
+        db.add(
+            MergeRequest(
+                id=1,
+                repository_id=1,
+                gitlab_mr_id=201,
+                title="Legacy",
+                description=None,
+                author="dev",
+                source_branch="feature/legacy",
+                target_branch="main",
+                created_at=t,
+                first_commit_at=t,
+                merged_at=t,
+                jira_key="BUG-2",
+                first_customer_tag="v9.2.0",
+                first_customer_tag_date=t,
+            )
+        )
         db.add(
             IssueWorklog(
                 id=10,
@@ -228,3 +262,122 @@ def test_build_release_worklog_hours_falls_back_to_author_assignment_when_accoun
     assert out.hours_by_role.sup == 0.0
     by_team = {r.team: r.hours for r in out.hours_by_team}
     assert by_team["LegacyTeam"] == 1.0
+
+
+def test_build_release_worklog_hours_uses_mr_linked_jira_not_bugrelease() -> None:
+    t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    with _session() as db:
+        db.add(
+            Repository(
+                id=1,
+                gitlab_id=1,
+                name="app",
+                path="g/app",
+                default_branch="main",
+                active=True,
+            )
+        )
+        db.flush()
+        db.add_all(
+            [
+                ProductionBug(
+                    id=1,
+                    jira_key="BUG-MR",
+                    healthy=True,
+                    jira_created_at_valid=True,
+                    created_at=t,
+                ),
+                ProductionBug(
+                    id=2,
+                    jira_key="BUG-OTHER",
+                    healthy=True,
+                    jira_created_at_valid=True,
+                    created_at=t,
+                ),
+            ]
+        )
+        db.flush()
+        db.add(
+            Release(
+                id=1,
+                repository_id=1,
+                tag_name="v10.25.2",
+                customer_release=True,
+                version_major=10,
+                version_minor=25,
+                version_patch=2,
+                commit_sha="c" * 40,
+                committed_at=t,
+            )
+        )
+        db.add_all(
+            [
+                MergeRequest(
+                    id=1,
+                    repository_id=1,
+                    gitlab_mr_id=301,
+                    title="MR-linked",
+                    description=None,
+                    author="dev",
+                    source_branch="feature/mr",
+                    target_branch="main",
+                    created_at=t,
+                    first_commit_at=t,
+                    merged_at=t,
+                    jira_key="BUG-MR",
+                    first_customer_tag="v10.25.2",
+                    first_customer_tag_date=t,
+                ),
+                # Same key twice in release should not double-count worklogs.
+                MergeRequest(
+                    id=2,
+                    repository_id=1,
+                    gitlab_mr_id=302,
+                    title="MR-linked-2",
+                    description=None,
+                    author="dev",
+                    source_branch="feature/mr2",
+                    target_branch="main",
+                    created_at=t,
+                    first_commit_at=t,
+                    merged_at=t,
+                    jira_key="BUG-MR",
+                    first_customer_tag="v10.25.2",
+                    first_customer_tag_date=t,
+                ),
+            ]
+        )
+        db.add_all(
+            [
+                IssueWorklog(
+                    id=21,
+                    bug_id=1,
+                    jira_worklog_id="w21",
+                    jira_account_id=None,
+                    author="A",
+                    started=t,
+                    time_spent_seconds=1800,
+                ),
+                IssueWorklog(
+                    id=22,
+                    bug_id=2,
+                    jira_worklog_id="w22",
+                    jira_account_id=None,
+                    author="B",
+                    started=t,
+                    time_spent_seconds=7200,
+                ),
+            ]
+        )
+        db.commit()
+
+        out = build_release_worklog_hours_response(
+            db,
+            repository_id=1,
+            tag_name="v10.25.2",
+            settings_json={},
+        )
+
+    assert out is not None
+    # Only BUG-MR should be counted for this tag; BUG-OTHER is not MR-linked to the tag.
+    assert out.total_hours == 0.5
