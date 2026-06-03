@@ -31,3 +31,9 @@ def test_reschedule_nightly_sync_when_not_running(monkeypatch) -> None:
     monkeypatch.setattr(scheduler_mod, "_scheduler", mock_sched)
     scheduler_mod.reschedule_nightly_sync(ConfigurationSchema())
     mock_sched.reschedule_job.assert_not_called()
+
+
+def test_build_scheduler_registers_three_jobs() -> None:
+    sched = scheduler_mod.build_scheduler(ConfigurationSchema())
+    job_ids = {job.id for job in sched.get_jobs()}
+    assert job_ids == {"nightly_sync", "hrworks_weekly_sync", "jira_analytics_sync"}

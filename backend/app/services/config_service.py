@@ -164,6 +164,30 @@ def _apply_env_overrides(config: ConfigurationSchema) -> ConfigurationSchema:
     if notifications_webhook is not None:
         config.notifications.webhook_url = notifications_webhook
 
+    if _env_text("HRWORKS_BASE_URL"):
+        config.hrworks.base_url = _env_text("HRWORKS_BASE_URL") or config.hrworks.base_url
+    hrworks_dow = _env_text("HRWORKS_SYNC_CRON_DAY_OF_WEEK")
+    if hrworks_dow is not None:
+        config.hrworks.sync_cron_day_of_week = hrworks_dow
+    _hrworks_hour = _env_int("HRWORKS_SYNC_CRON_HOUR")
+    if _hrworks_hour is not None:
+        config.hrworks.sync_cron_hour = _hrworks_hour
+    _hrworks_minute = _env_int("HRWORKS_SYNC_CRON_MINUTE")
+    if _hrworks_minute is not None:
+        config.hrworks.sync_cron_minute = _hrworks_minute
+    hrworks_backfill = _env_text("HRWORKS_BACKFILL_START_DATE")
+    if hrworks_backfill is not None:
+        config.hrworks.backfill_start_date = hrworks_backfill
+    _incremental_months = _env_int("HRWORKS_INCREMENTAL_MONTHS_BACK")
+    if _incremental_months is not None:
+        config.hrworks.incremental_months_back = _incremental_months
+    _batch_size = _env_int("HRWORKS_PERSONS_BATCH_SIZE")
+    if _batch_size is not None:
+        config.hrworks.persons_batch_size = 1
+    _roster_refresh = _env_int("HRWORKS_ROSTER_REFRESH_HOURS")
+    if _roster_refresh is not None:
+        config.hrworks.roster_refresh_hours = _roster_refresh
+
     return config
 
 
@@ -214,6 +238,8 @@ class RuntimeConfig:
     gitlab_token: str
     jira_token: str
     jira_user_email: str
+    hrworks_access_key: str
+    hrworks_secret_access_key: str
 
 
 def _resolve_jira_user_email(app_config: AppConfiguration | None) -> str:
@@ -296,6 +322,13 @@ def load_runtime_config(db: Session | None = None) -> RuntimeConfig:
         gitlab_token=env_gitlab_token or db_gitlab_token or "",
         jira_token=env_jira_token or db_jira_token or "",
         jira_user_email=_resolve_jira_user_email(app_config),
+        hrworks_access_key=_env_text("ACCESSKEY") or _env_text("HRWORKS_ACCESS_KEY") or "",
+        hrworks_secret_access_key=(
+            _env_text("SECRETACCESSKEY")
+            or _env_text("SECRET_ACCESSKEY")
+            or _env_text("HRWORKS_SECRET_ACCESS_KEY")
+            or ""
+        ),
     )
 
 

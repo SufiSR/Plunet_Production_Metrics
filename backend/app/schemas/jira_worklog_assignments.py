@@ -22,17 +22,3 @@ class JiraWorklogUserAssignment(BaseModel):
             raise ValueError("Either jira_account_id or author must be provided")
         return self
 
-
-class WorklogAuthorListItem(BaseModel):
-    jira_account_id: str | None
-    author: str | None
-
-
-class WorklogAuthorListResponse(BaseModel):
-    items: list[WorklogAuthorListItem]
-    page: int
-    size: int
-    total_elements: int
-    total_pages: int
-    has_next: bool
-    has_previous: bool

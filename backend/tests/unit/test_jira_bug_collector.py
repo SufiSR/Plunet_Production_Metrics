@@ -87,6 +87,25 @@ def test_health_label_test_case_insensitive() -> None:
     assert result.healthmemo == "pre-production - label contains test"
 
 
+def test_health_label_ignored_is_healthy_but_not_post_production() -> None:
+    result = evaluate_issue_health(
+        issue_type="Bug",
+        parent_type=None,
+        parent_summary=None,
+        affects_versions=[],
+        fix_versions=[],
+        indicator_cf10114=None,
+        customer_names=[],
+        parent_affects_versions=[],
+        parent_fix_versions=[],
+        parent_indicator_cf10114=None,
+        parent_customer_names=[],
+        labels=["ignored"],
+    )
+    assert result.healthy is True
+    assert result.healthmemo == "ignored"
+
+
 def test_health_pre_production_parent_override() -> None:
     result = evaluate_issue_health(
         issue_type="Bug Subtask",

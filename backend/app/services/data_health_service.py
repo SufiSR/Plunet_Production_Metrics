@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import quote
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.bug_release import BugRelease
@@ -72,9 +72,20 @@ def _count_total_bugs(db: Session) -> int:
     return int(db.execute(select(func.count(ProductionBug.id))).scalar_one())
 
 
+def _is_ignored_healthmemo(healthmemo: str | None) -> bool:
+    return str(healthmemo or "").strip().lower() == "ignored"
+
+
 def _count_healthy_bugs(db: Session) -> int:
     return int(
-        db.execute(select(func.count(ProductionBug.id)).where(ProductionBug.healthy.is_(True))).scalar_one()
+        db.execute(
+            select(func.count(ProductionBug.id)).where(
+                or_(
+                    ProductionBug.healthy.is_(True),
+                    func.lower(func.trim(ProductionBug.healthmemo)) == "ignored",
+                )
+            )
+        ).scalar_one()
     )
 
 
@@ -92,7 +103,7 @@ def _list_jira_health_breakdown(db: Session, *, total_bugs: int) -> list[JiraHea
         return []
     return [
         JiraHealthBreakdownRow(
-            healthy=bool(healthy),
+            healthy=bool(healthy) or _is_ignored_healthmemo(healthmemo),
             healthmemo=healthmemo,
             count=int(count),
             share_pct=round((int(count) / total_bugs) * 100.0, 2),

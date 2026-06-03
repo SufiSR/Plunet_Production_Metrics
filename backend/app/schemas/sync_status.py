@@ -39,6 +39,7 @@ class LastSyncBlock(BaseModel):
     finished_at: datetime | None
     duration_seconds: int | None
     status: str
+    trigger: str | None = None
     collectors: dict[str, CollectorStatusBlock]
     snapshots_generated: int
     snapshot_generated_at: datetime | None

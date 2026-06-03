@@ -145,6 +145,8 @@ def test_run_nightly_sync_failed_without_tokens(monkeypatch: pytest.MonkeyPatch)
             gitlab_token="",
             jira_token="",
             jira_user_email="",
+            hrworks_access_key="",
+            hrworks_secret_access_key="",
         ),
     )
     monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 1)
@@ -195,6 +197,8 @@ def test_run_nightly_sync_partial_branch_logs_info(monkeypatch: pytest.MonkeyPat
             gitlab_token="tok",
             jira_token="",
             jira_user_email="",
+            hrworks_access_key="",
+            hrworks_secret_access_key="",
         ),
     )
     monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 1)
@@ -244,6 +248,8 @@ def test_run_nightly_sync_exception_after_success_finishes_failed_log(
             gitlab_token="a",
             jira_token="b",
             jira_user_email="",
+            hrworks_access_key="",
+            hrworks_secret_access_key="",
         ),
     )
     monkeypatch.setattr(sp, "_create_nightly_sync_log", lambda _sf, **_: 7)

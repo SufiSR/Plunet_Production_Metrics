@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { useMttrAlphaSummary } from "@/lib/hooks";
-import { getChartColors } from "@/lib/chart-colors";
+import { useChartColors } from "@/lib/chart-colors";
 import { formatMttrMinutes, formatMttrMinutesDetail } from "@/lib/mttr-display";
 import type { MttrAlphaSummaryResponse } from "@/types/api";
 
@@ -94,7 +94,7 @@ function PercentileChips({ summary }: { summary: MttrAlphaSummaryResponse }) {
 }
 
 function SpreadHistogram({ summary }: { summary: MttrAlphaSummaryResponse }) {
-  const colors = useMemo(() => getChartColors(), []);
+  const colors = useChartColors();
   const data = useMemo(() => {
     const total = Math.max(1, summary.incident_count);
     return (summary.mttr_alpha_histogram ?? []).map((b) => ({
@@ -116,7 +116,12 @@ function SpreadHistogram({ summary }: { summary: MttrAlphaSummaryResponse }) {
       <div className="h-56 w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 52 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={colors.grid}
+              strokeOpacity={colors.gridOpacity}
+              vertical={false}
+            />
             <XAxis
               dataKey="label"
               tick={{ fontSize: 9, fill: colors.axisLabel }}

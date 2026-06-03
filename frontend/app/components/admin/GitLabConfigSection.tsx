@@ -4,10 +4,13 @@ import type { AdminConfigResponse, AdminConfigPatch } from "@/types/admin";
 import { SecretInput } from "./SecretInput";
 import { TagListInput } from "./TagListInput";
 
+export type GitLabConfigSectionMode = "full" | "secrets" | "rules";
+
 interface GitLabConfigSectionProps {
   config: AdminConfigResponse;
   patch: AdminConfigPatch;
   onPatch: (updates: AdminConfigPatch) => void;
+  mode?: GitLabConfigSectionMode;
 }
 
 function TextInput({
@@ -79,19 +82,30 @@ function ToggleInput({
   );
 }
 
-export function GitLabConfigSection({ config, patch, onPatch }: GitLabConfigSectionProps) {
+export function GitLabConfigSection({
+  config,
+  patch,
+  onPatch,
+  mode = "full",
+}: GitLabConfigSectionProps) {
   const v = (key: keyof AdminConfigResponse) =>
     (patch[key as keyof AdminConfigPatch] ?? config[key]) as string;
+  const showSecrets = mode === "full" || mode === "secrets";
+  const showRules = mode === "full" || mode === "rules";
 
   return (
     <section className="bg-surface-container-lowest p-10 rounded-2xl">
       <div className="flex justify-between items-start mb-10">
         <div>
           <h2 className="text-2xl font-editorial font-semibold tracking-tight text-on-surface mb-1">
-            GitLab Configuration
+            GitLab {mode === "secrets" ? "connection" : "configuration"}
           </h2>
           <p className="text-sm text-on-surface-variant">
-            Configure the repository provider for DORA metric extraction.
+            {mode === "secrets"
+              ? "Instance URL and API token for the DORA GitLab collector."
+              : mode === "rules"
+                ? "Repository scope and release markers for DORA ingestion."
+                : "Configure the repository provider for DORA metric extraction."}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-surface-container px-4 py-1.5 rounded-full">
@@ -105,29 +119,35 @@ export function GitLabConfigSection({ config, patch, onPatch }: GitLabConfigSect
       </div>
 
       <div className="space-y-8">
-        <TextInput
-          id="gitlab_url"
-          label="Instance URL"
-          value={v("gitlab_url")}
-          placeholder="https://gitlab.company.com"
-          onChange={(val) => onPatch({ gitlab_url: val })}
-        />
+        {showSecrets ? (
+          <>
+            <TextInput
+              id="gitlab_url"
+              label="Instance URL"
+              value={v("gitlab_url")}
+              placeholder="https://gitlab.company.com"
+              onChange={(val) => onPatch({ gitlab_url: val })}
+            />
 
-        <SecretInput
-          id="gitlab_token"
-          label="Personal Access Token"
-          hint={config.gitlab_token_hint ?? null}
-          helpText="Requires 'api', 'read_repository', and 'read_user' scopes."
-          onChange={(val) => {
-            if (val) onPatch({ gitlab_token: val });
-            else {
-              const next = { ...patch };
-              delete next.gitlab_token;
-              onPatch(next);
-            }
-          }}
-        />
+            <SecretInput
+              id="gitlab_token"
+              label="Personal Access Token"
+              hint={config.gitlab_token_hint ?? null}
+              helpText="Requires 'api', 'read_repository', and 'read_user' scopes."
+              onChange={(val) => {
+                if (val) onPatch({ gitlab_token: val });
+                else {
+                  const next = { ...patch };
+                  delete next.gitlab_token;
+                  onPatch(next);
+                }
+              }}
+            />
+          </>
+        ) : null}
 
+        {showRules ? (
+          <>
         <TagListInput
           id="gitlab_project_paths"
           label="Project Paths"
@@ -199,6 +219,8 @@ export function GitLabConfigSection({ config, patch, onPatch }: GitLabConfigSect
             onChange={(vals) => onPatch({ release_mr_source_branch_markers: vals })}
           />
         </div>
+          </>
+        ) : null}
       </div>
     </section>
   );

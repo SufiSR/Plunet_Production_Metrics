@@ -6,10 +6,11 @@ import { adminApiClient } from "@/lib/admin-api-client";
 import { ThemeToggle } from "@/app/components/ui/ThemeToggle";
 
 const NAV_ITEMS = [
-  { href: "/admin/config", icon: "settings", label: "Configuration" },
-  { href: "/admin/user-assignments", icon: "badge", label: "User assignments" },
-  { href: "/admin/data-health", icon: "monitor_heart", label: "Data Health" },
-  { href: "/admin/raw-tables", icon: "table_view", label: "Raw Data" },
+  { href: "/admin_legacy/config", icon: "settings", label: "Configuration" },
+  { href: "/admin_legacy/user-assignments", icon: "badge", label: "User assignments" },
+  { href: "/admin_legacy/feature-families", icon: "account_tree", label: "Feature families" },
+  { href: "/admin_legacy/data-health", icon: "monitor_heart", label: "Data Health" },
+  { href: "/admin_legacy/raw-tables", icon: "table_view", label: "Raw Data" },
 ];
 
 export function AdminSidebar() {

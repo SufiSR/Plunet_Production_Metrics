@@ -1,15 +1,18 @@
 # Pipeline and Metrics Deep Dive
 
-This document explains the exact backend pipeline behavior as implemented today, including:
+This document describes the implemented data pipelines and metric/report semantics for the current engineering analytics platform.
 
-- source-to-database mappings,
-- derivation steps,
-- snapshot generation,
-- and metric calculation formulas/filters.
+The platform has three main ingestion paths:
 
-## 1) Pipeline orchestration (`run_nightly_sync`)
+- DORA nightly pipeline: GitLab + Jira production-bug data, derivations, and DORA snapshots.
+- Jira Analytics sync: Jira warehouse, workflow, allocation, feature, and report inputs.
+- HRWorks sync: roster and capacity data used by team reports.
 
-Pipeline phases in runtime state:
+## 1) DORA Pipeline Orchestration
+
+Main function: `run_nightly_sync`.
+
+Runtime phases:
 
 - `gitlab`
 - `jira`
@@ -17,98 +20,92 @@ Pipeline phases in runtime state:
 - `snapshots`
 - `complete`
 
-The orchestrator writes a `sync_log` row for `source=nightly` with `details_json.pipeline_runtime`, then transitions each phase through `pending` -> `running` -> `success|failed|skipped`.
+The orchestrator writes a `sync_log` row with `source=nightly` and stores phase state in `details_json.pipeline_runtime`. Each phase transitions through `pending`, `running`, and a terminal state such as `success`, `failed`, or `skipped`.
 
 Status outcomes:
 
-- `success`: both collectors succeeded and derivations had no errors.
+- `success`: GitLab and Jira collectors succeeded and derivations completed.
 - `partial_failure`: one collector failed/skipped, or derivations failed.
-- `failed`: both collectors failed/skipped, or fatal crash in orchestration.
+- `failed`: both collectors failed/skipped, or orchestration crashed.
 
-Snapshot gating rule:
+Snapshot gating:
 
-- If derivation errors exist, snapshots are skipped intentionally (to avoid publishing partially-derived metrics).
+- DORA snapshots are skipped when derivation errors exist so stale or partially-derived relationships are not published as fresh metrics.
 
-## 2) GitLab collector: exact mapping
+## 2) DORA GitLab Collector
 
 Main function: `collect_gitlab_tags_and_releases`.
 
-### 2.1 Repository mapping
+### Repository Mapping
 
-Source: `GET /projects/{path}`.
+Source: GitLab project API.
 
 Mapped into `repository`:
 
-- `project.id` -> `repository.id` and `repository.gitlab_id`
-- `project.name` -> `repository.name`
-- `project.path_with_namespace` -> `repository.path`
-- `project.default_branch` -> `repository.default_branch`
-- forced `repository.active = true`
+- GitLab project id -> `repository.id` and `repository.gitlab_id`.
+- Project name -> `repository.name`.
+- `path_with_namespace` -> `repository.path`.
+- Default branch -> `repository.default_branch`.
+- Repository is marked active.
 
-### 2.2 Release mapping
+### Release Mapping
 
-Source: `GET /projects/{path}/repository/tags`.
+Source: project repository tags.
 
 For each valid tag:
 
-- `tag.name` -> `release.tag_name`
-- `tag.commit.id` -> `release.commit_sha`
-- `tag.commit.committed_date` -> `release.committed_at`
-- parsed semantic components -> `version_major`, `version_minor`, `version_patch`, `pre_release`
-- `customer_release` is derived:
-  - true when tag does not match configured non-customer markers (default markers include `rc` and `beta`)
-  - false otherwise
+- Tag name -> `release.tag_name`.
+- Commit SHA -> `release.commit_sha`.
+- Commit date -> `release.committed_at`.
+- Parsed semantic version fields -> `version_major`, `version_minor`, `version_patch`, `pre_release`.
+- `customer_release` is true unless the tag matches configured non-customer release markers such as `rc` or `beta`.
 
 Reconciliation:
 
-- Tags no longer present in GitLab are deleted from `release`.
-- Related `bug_release` links are deleted first for removed releases.
-- Safety guard avoids destructive reconciliation when fetched tag count appears incomplete.
+- Tags no longer present in GitLab are removed from `release`.
+- Related `bug_release` links are removed before deleting releases.
+- A safety guard avoids destructive reconciliation when a fetched tag set appears incomplete.
 
-### 2.3 Merge request mapping
+### Merge Request Mapping
 
-Source: merged MRs per configured target branches.
+Source: merged merge requests for configured target branches.
 
 Mapped into `merge_request`:
 
-- identifiers and metadata (`gitlab_mr_id`, title, description, author, branches)
-- timestamps (`created_at`, `merged_at`)
-- commit references (`head_sha`, `merge_commit_sha`, `squash_commit_sha`)
-- `effective_commit_sha` = first non-empty of merge commit, squash commit, head SHA
-- Jira key extraction from title/branch/description:
-  - prefers `[ABC-123]` form,
-  - fallback to first regex ticket key
-- `jira_key_source` tracks where key was found
+- GitLab MR id, title, description, author, source/target branch.
+- Timestamps such as `created_at` and `merged_at`.
+- Commit references such as head, merge, and squash commit SHA.
+- `effective_commit_sha`: first available merge commit, squash commit, or head SHA.
+- Jira key extracted from title, branch, or description.
+- `jira_key_source` to explain where the key came from.
 
-When Jira key changes on upsert:
+If the Jira key changes on upsert, `jira_ready_for_qa_at` is reset to avoid stale lead-time linkage.
 
-- `jira_ready_for_qa_at` is reset to null to avoid stale linkage.
-
-### 2.4 First commit enrichment (`merge_request.first_commit_at`)
+### First Commit Enrichment
 
 For each relevant MR:
 
-- fetch MR commits,
-- parse all commit `committed_date`,
-- keep earliest valid date as `first_commit_at`.
+- Fetch MR commits.
+- Parse commit dates.
+- Store the earliest valid date as `merge_request.first_commit_at`.
 
-### 2.5 MR -> first customer release mapping
+### MR to First Customer Release
 
-For each MR with `effective_commit_sha`:
+For each MR with an `effective_commit_sha`:
 
-- fetch tag refs attached to that SHA,
-- keep refs that correspond to customer releases in DB,
-- keep only releases with `release.committed_at >= mr.merged_at`,
-- select earliest eligible release.
+- Fetch GitLab tag refs attached to the SHA.
+- Keep refs corresponding to customer releases in the database.
+- Keep only releases whose commit date is at or after the MR merge date.
+- Select the earliest eligible release.
 
 Derived fields:
 
 - `first_customer_tag`
 - `first_customer_tag_date`
-- `release_wait_time_hours = (first_customer_tag_date - merged_at)` in hours (rounded to 2 decimals)
-- `lead_time_hours = (first_commit_at - first_customer_tag_date)` in hours (rounded to 2 decimals) when first commit exists
+- `release_wait_time_hours`
+- `lead_time_hours`
 
-Lead-time match statuses:
+Lead-time match statuses include:
 
 - `matched`
 - `first_commit_missing`
@@ -117,265 +114,389 @@ Lead-time match statuses:
 - `no_customer_tag_ref_found`
 - `no_customer_tag_after_merge`
 
-## 3) Jira collector: exact mapping
+## 3) DORA Jira Collector
 
 Main function: `collect_jira_production_bugs`.
 
-### 3.1 Issue selection query
+### Issue Selection
 
-JQL constraints include:
+JQL filters include:
 
-- issue type in Bug/Bug Subtask,
-- created after global sync floor,
-- updated within configured lookback,
-- optional project exclusions from config.
+- Issue type in Bug/Bug Subtask.
+- Created after the global sync floor.
+- Updated within configured lookback.
+- Optional project exclusions from configuration.
 
-### 3.2 Production bug mapping
+### Production Bug Mapping
 
-For each issue, upsert into `production_bug`:
+For each issue, the collector upserts `production_bug`:
 
-- identity: `jira_key`
-- descriptive fields: summary, issue type, status, priority
-- classification fields: versions/fixVersions/components, parent issue metadata, custom fields
-- timestamps: created, updated, closed
-- quality flags:
-  - `jira_created_at_valid`
-  - `healthy`
-  - `healthmemo`
-- `ready_for_qa_at` from changelog status transitions
-- `total_worklog_seconds` from issue worklogs
+- `jira_key`
+- Summary, issue type, status, priority.
+- Versions, fixVersions, components, parent metadata, and configured custom fields.
+- Created, updated, and closed timestamps.
+- Health and quality flags.
+- Ready-for-QA timestamp from changelog transitions.
+- Total worklog seconds.
 
 MTTR base calculation:
 
-- `mttr_minutes = floor((closed_at - created_at)/60)` when created is valid and closed >= created.
-- otherwise null.
+- `mttr_minutes = floor((closed_at - created_at) / 60)` when dates are valid.
 
-### 3.3 Worklog mapping
+### Worklog Mapping
 
-All issue worklogs are synchronized into `issue_worklog`:
+Issue worklogs are synchronized into `issue_worklog`:
 
-- upsert existing rows by Jira worklog id,
-- insert new worklogs,
-- delete removed worklogs.
+- Existing rows are updated by Jira worklog id.
+- New worklogs are inserted.
+- Removed worklogs are deleted.
 
-### 3.4 Ready-for-QA hydration for non-bug Jira keys
+### Ready-for-QA Hydration for Non-Bug Keys
 
 Function: `hydrate_merge_request_jira_ready_for_qa`.
 
 Purpose:
 
-- For MR Jira keys that are not covered by `production_bug.ready_for_qa_at`,
-- fetch changelog and write `merge_request.jira_ready_for_qa_at`.
+- For MR Jira keys not represented by `production_bug.ready_for_qa_at`.
+- Fetch changelog and write `merge_request.jira_ready_for_qa_at`.
 
-## 4) Derivation phase details
+## 4) DORA Derivations
 
-Derivations run only when both collectors succeed.
+Derivations run only when both DORA collectors have sufficient source data.
 
-### 4.1 Bug -> release linking (`bug_release`)
+### Bug to Release Linking
 
 Function: `_map_bugs_to_releases`.
 
-Mapping logic:
+Logic:
 
-- normalize release tags (`v1.2.3` and `1.2.3` treated as equivalents),
-- for each bug `affects_versions`, match release tags by normalized keys,
-- recreate links per bug (old links removed first).
+- Normalize release tags so `v1.2.3` and `1.2.3` are treated as equivalent.
+- Match production-bug affected versions to release tags.
+- Recreate links per bug.
 
-### 4.2 MTTR Alpha fix release resolution
+### MTTR Alpha Fix Release Resolution
 
 Function: `_resolve_mttr_alpha_fix_releases`.
 
 Eligibility:
 
-- bug must be `healthy=true`
-- bug priority must be in configured `jira.mttr_alpha_priorities`.
+- `production_bug.healthy = true`.
+- Priority is in configured `jira.mttr_alpha_priorities`.
 
 Resolution order:
 
-1. Try MR linkage by `merge_request.jira_key` with earliest `first_customer_tag_date`.
-2. Fallback to bug `fix_versions` matching release tags.
+1. MR linkage through `merge_request.jira_key` and earliest `first_customer_tag_date`.
+2. Fallback to bug fixVersions matching release tags.
 
-Derived fields on `production_bug`:
+Derived fields:
 
 - `first_fix_release_tag`
 - `first_fix_release_date`
-- `mttr_alpha_resolution_path` (`mr_jira_key` or `fix_version`)
-- `mttr_alpha_minutes = floor((first_fix_release_date - created_at)/60)` when valid; else null.
+- `mttr_alpha_resolution_path`
+- `mttr_alpha_minutes`
 
-### 4.3 Lead post-production derivation
+### Lead Post-Production
 
 Function: `_compute_lead_post_production`.
 
 For merge requests in lookback:
 
-- choose `ready_at` from bug `ready_for_qa_at`, fallback to MR `jira_ready_for_qa_at`.
-- if missing or `merged_at < ready_at`, result is null.
-- else `lead_post_production_hours = (merged_at - ready_at)` in hours, rounded to 2 decimals.
+- Choose `ready_at` from `production_bug.ready_for_qa_at` or `merge_request.jira_ready_for_qa_at`.
+- If missing, or if merge happened before Ready for QA, result is null.
+- Otherwise store `lead_post_production_hours`.
 
-## 5) Snapshot generation details
+## 5) DORA Snapshot Generation
 
 Function: `refresh_snapshots`.
 
-### 5.1 Window construction
-
-For active repositories, build windows over configured lookback for:
+Windows are built for:
 
 - `WEEK`
 - `MONTH`
 - `QUARTER`
 
-Window bounds are UTC `[start, end)` semantics (`end` exclusive in SQL filtering).
+Window bounds use UTC `[start, end)` semantics.
 
-### 5.2 Precomputed global MTTR values per window
+For each repository and window:
 
-For each `(period_start, period_end)` window:
+- Calculate metric values through `calculate_period_metrics`.
+- Delete the existing snapshot for `(repository_id, period_type, period_start)`.
+- Insert a fresh `metric_snapshot` row.
 
-- compute `mttr_minutes` and `mttr_alpha_minutes` once (global, not repository-specific),
-- reuse for each repository snapshot row in that same window.
+Fields include:
 
-### 5.3 Snapshot row write behavior
+- Deployment frequency.
+- Median lead time.
+- Median dev/review time.
+- Median release-wait time.
+- Change failure rate.
+- MTTR and MTTR Alpha medians.
+- Lead post-production median.
+- Lead-time sample count and match counts.
 
-For each repository + window:
+## 6) DORA Metric Formulas
 
-- compute metric values via `calculate_period_metrics`,
-- delete existing row for `(repository_id, period_type, period_start)`,
-- insert fresh `metric_snapshot` row.
-
-Fields written include:
-
-- deployment frequency
-- lead-time median
-- dev/review median
-- release-wait median
-- change failure rate
-- MTTR and MTTR Alpha medians
-- lead post-production median
-- lead-time diagnostics (`lead_time_sample_count`, `lead_time_match_counts`)
-
-## 6) Metric formulas and filters
-
-All calculations use UTC datetime bounds from period windows.
-
-### 6.1 Deployment Frequency
+### Deployment Frequency
 
 Population:
 
-- customer releases for repository in `[start_dt, end_dt)`.
+- Customer releases for repository in the period.
 
 Formula:
 
-- `deployment_freq_per_week = release_count / number_of_weeks_in_period`
-- rounded to 4 decimals.
+- `deployment_freq_per_week = release_count / number_of_weeks_in_period`, rounded to 4 decimals.
 
-### 6.2 Lead Time (median minutes)
+### Lead Time
 
 Population:
 
-- `merge_request.lead_time_hours is not null`,
-- MR belongs to repository,
-- `first_customer_tag_date` inside period,
-- optional exclusion of release-only MRs based on title/source markers from config.
+- Repository MRs with `lead_time_hours`.
+- `first_customer_tag_date` inside the period.
+- Optional exclusion of release-only MRs based on configured title/source branch markers.
 
 Formula:
 
-- median of `lead_time_hours * 60`, rounded to nearest minute (half-up).
+- Median of `lead_time_hours * 60`, rounded to nearest minute.
 
-### 6.3 Release Wait (median minutes)
+### Release Wait
 
-Same cohort filter as Lead Time, value source:
-
-- `merge_request.release_wait_time_hours`.
+Same cohort as lead time, using `release_wait_time_hours`.
 
 Formula:
 
-- median of hours*60, rounded to minute.
+- Median of hours * 60, rounded to nearest minute.
 
-### 6.4 Dev/Review (median minutes)
+### Dev/Review Time
 
-Same cohort, rows requiring both:
-
-- `lead_time_hours` and `release_wait_time_hours`.
+Same cohort as lead time, requiring both lead time and release wait.
 
 Per row:
 
 - `delta = lead_time_hours - release_wait_time_hours`.
-- keep only `delta >= 0`.
+- Keep non-negative deltas.
 
 Formula:
 
-- median of `delta * 60`, rounded to minute.
+- Median of `delta * 60`, rounded to nearest minute.
 
-### 6.5 Change Failure Rate (CFR)
+### Change Failure Rate
 
 Denominator:
 
-- count of eligible customer releases in period for repository.
+- Eligible customer releases in the period for repository.
 
 Numerator:
 
-- distinct releases in denominator that are linked via `bug_release`
-- to `production_bug` rows satisfying `cfr_eligible_production_bug_predicate()`.
+- Distinct denominator releases linked through `bug_release` to CFR-eligible production bugs.
 
 Formula:
 
 - `failed_release_count / total_release_count`, rounded to 4 decimals.
-- returns `0` when denominator is zero.
+- Returns zero when denominator is zero.
 
-### 6.6 MTTR (median minutes)
-
-Population:
-
-- `production_bug.healthy = true`
-- `jira_created_at_valid = true`
-- `closed_at` inside period
-- `mttr_minutes` present
-
-Formula:
-
-- median of `mttr_minutes`, rounded to minute.
-
-### 6.7 MTTR Alpha (median minutes)
+### MTTR
 
 Population:
 
-- `production_bug.healthy = true`
-- `jira_created_at_valid = true`
-- `created_at` present
-- `first_fix_release_date` inside period
-- `mttr_alpha_minutes` present
+- Healthy production bugs.
+- Valid Jira created timestamp.
+- `closed_at` inside the period.
+- `mttr_minutes` present.
 
 Formula:
 
-- median of `mttr_alpha_minutes`, rounded to minute.
+- Median of `mttr_minutes`.
 
-### 6.8 Lead Post-Production (median minutes)
+### MTTR Alpha
 
 Population:
 
-- repository MR rows with `first_customer_tag_date` in period
-- `lead_post_production_hours` present
+- Healthy production bugs.
+- Valid Jira created timestamp.
+- `first_fix_release_date` inside the period.
+- `mttr_alpha_minutes` present.
 
 Formula:
 
-- median of `lead_post_production_hours * 60`, rounded to minute.
+- Median of `mttr_alpha_minutes`.
 
-### 6.9 Lead-time diagnostics
+### Lead Post-Production
 
-For the lead-time cohort:
+Population:
 
-- `lead_time_sample_count`: count where `lead_time_hours` is non-null.
-- `lead_time_match_counts`: grouped counts by `lead_time_match_status`.
+- Repository MRs with `first_customer_tag_date` in the period.
+- `lead_post_production_hours` present.
 
-## 7) Freshness and sync status data exposed to frontend
+Formula:
 
-The frontend status components depend on `sync_log`-derived status and snapshot metadata:
+- Median of `lead_post_production_hours * 60`.
 
-- latest nightly run status (`success`, `partial_failure`, `failed`, `running`, `crashed` mapping),
-- per-phase runtime state from `details_json.pipeline_runtime`,
-- `snapshots_generated` and latest snapshot timestamp.
+## 7) Jira Analytics Sync
 
-This enables:
+Main function: `run_jira_analytics_sync`.
 
-- stale/failure banners,
-- sync status pill states,
-- admin pipeline progress visualization.
+Purpose:
+
+- Maintain a reporting warehouse from Jira issue, worklog, field, sprint, relation, user, and workflow data.
+- Refresh derived feature, workflow, allocation, and data-quality inputs used by analytics reports.
+
+Scheduling:
+
+- Controlled by `jira_analytics.sync_cron_hour` and `jira_analytics.sync_cron_minute`.
+- Scheduled runs use `jira_analytics.scheduled_lookback_days`.
+- Manual admin triggers can override lookback.
+
+Major data groups:
+
+- Projects and issues.
+- Issue details and field values.
+- Worklogs.
+- Sprints and issue-sprint membership.
+- Issue relations.
+- Status transitions.
+- Users.
+- Workflows and workflow status classifications.
+
+Derived/normalization responsibilities:
+
+- Project scoping for analytics.
+- Feature root and feature membership resolution.
+- Feature family membership and suggestions.
+- Topic classification for worklogs and issues.
+- Workflow normalization and status condensation.
+- Waiting, active/passive, and thrash calculations.
+- Monthly allocated effort and monthly topic effort bases.
+- Data-quality checks and drilldowns.
+
+Allocation behavior:
+
+- Jira worklog effort is mapped to users, roles, teams, topics, features, feature families, customers, and investment categories.
+- User/team/role assignment tables provide the source of truth for organizational attribution.
+- Allocation can be rebuilt from admin endpoints when rules or source data change.
+
+## 8) HRWorks Sync
+
+Main function: `run_hrworks_sync`.
+
+Purpose:
+
+- Import HRWorks person roster.
+- Import monthly available hours for historical and forecast windows.
+- Provide capacity denominators for team utilization and forecast reports.
+
+Scheduling:
+
+- Weekly by default, controlled by `hrworks.sync_cron_day_of_week`, `hrworks.sync_cron_hour`, and `hrworks.sync_cron_minute`.
+
+Configuration:
+
+- `hrworks.backfill_start_date` for initial history.
+- `hrworks.incremental_months_back` and `hrworks.incremental_forecast_months` for scheduled refreshes.
+- `hrworks.roster_refresh_hours` for roster refresh cadence.
+- `hrworks.denied_person_ids` to exclude technical or invalid accounts.
+
+Outputs:
+
+- `hrworks_person_roster`.
+- `jira_user_monthly_hrworks_hours`.
+
+## 9) Jira Analytics Report Families
+
+### Portfolio Investment
+
+Uses monthly allocation and topic classification to explain where capacity went:
+
+- Investment categories.
+- Feature investment ranking.
+- Feature investment audit with issue/worklog drilldowns and Excel export.
+- Investment by theme.
+
+### Features
+
+Uses feature roots, memberships, families, worklogs, and delivery metadata:
+
+- Feature worklog hours matrix.
+- Feature-family hours matrix.
+- Issues without feature.
+- Feature delivery risk.
+
+### Flow
+
+Uses feature lifecycle fields, issue dates, status categories, and derived timelines:
+
+- Lifecycle funnel.
+- Promised vs actual.
+- Idea aging.
+- Size vs speed.
+- Roadmap reliability.
+
+### Bottlenecks
+
+Uses status transitions and workflow classifications:
+
+- Status waiting time.
+- Active vs passive time.
+- Active/passive trend.
+- Workflow thrashing.
+
+### Teams
+
+Uses assignments, roles, HRWorks capacity, Jira worklogs, and completion signals:
+
+- Work allocation heatmap.
+- Planned vs unplanned.
+- Availability vs booked.
+- Capacity forecast.
+- Real interruption ratio.
+- Throughput stability.
+- Bus factor.
+- Engineering health index.
+- Team comparison.
+
+### Customers
+
+Uses issue/customer attribution and effort allocation:
+
+- Customer effort.
+
+### Data Quality
+
+Checks whether analytics outputs are trustworthy:
+
+- Missing or weak mappings.
+- Unclassified effort.
+- User-level drilldowns.
+- Ignore/unignore support for accepted exceptions.
+
+## 10) Freshness and Frontend Status
+
+The frontend uses sync data to show:
+
+- Latest DORA sync status and phase runtime.
+- HRWorks latest sync.
+- Jira Analytics latest sync.
+- Ingestion progress and error states.
+- Dashboard stale/failure banners.
+- Admin operations status cards.
+
+DORA public freshness comes from `/api/sync/status`. Jira Analytics and HRWorks latest sync state is exposed through admin endpoints.
+
+## 11) Rebuild and Recovery Operations
+
+Available operational actions:
+
+- Trigger DORA sync.
+- Trigger Jira Analytics sync.
+- Trigger HRWorks sync.
+- Rebuild Jira Analytics allocation.
+- Inspect raw table data.
+- Inspect data-health and data-quality warnings.
+
+Typical recovery path:
+
+1. Check admin overview and latest sync logs.
+2. Review ingestion-specific progress/errors.
+3. Fix configuration, credentials, or source mapping.
+4. Re-run the affected sync.
+5. Rebuild allocation if assignment/rule/source changes affect derived analytics.
+6. Validate data quality before relying on reports.

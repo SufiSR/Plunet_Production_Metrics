@@ -14,6 +14,8 @@ def test_load_configuration_delegates(monkeypatch) -> None:
             gitlab_token="",
             jira_token="",
             jira_user_email="",
+            hrworks_access_key="",
+            hrworks_secret_access_key="",
         ),
     )
     cfg = app_config.load_configuration()

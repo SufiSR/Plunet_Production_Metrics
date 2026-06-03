@@ -82,6 +82,7 @@ export interface LastSyncBlock {
   finished_at: string | null;
   duration_seconds: number | null;
   status: "SUCCESS" | "PARTIAL_FAILURE" | "FAILED";
+  trigger?: string | null;
   collectors: Record<string, CollectorStatusBlock>;
   snapshots_generated: number;
   snapshot_generated_at: string | null;

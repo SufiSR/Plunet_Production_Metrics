@@ -248,6 +248,7 @@ def test_build_sync_status_collectors_and_duration(monkeypatch: pytest.MonkeyPat
                 records_processed=None,
                 error_message=None,
                 details_json={
+                    "trigger": "manual",
                     "pipeline_runtime": {
                         "current_phase": "finished",
                         "phase_started_at": "2026-01-01T01:11:00+00:00",
@@ -273,6 +274,7 @@ def test_build_sync_status_collectors_and_duration(monkeypatch: pytest.MonkeyPat
         resp = build_sync_status_response(db, config=cfg)
     assert resp.last_sync is not None
     assert resp.last_sync.status == "SUCCESS"
+    assert resp.last_sync.trigger == "manual"
     assert resp.last_sync.duration_seconds == 5 * 60
     assert resp.last_sync.collectors["gitlab"].status == "success"
     assert resp.last_sync.collectors["jira"].status == "oops"

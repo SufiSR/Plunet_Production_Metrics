@@ -12,17 +12,17 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 @theme {
-  /* Surfaces */
-  --color-background:                 #f8f9fa;
-  --color-surface:                    #f8f9fa;
-  --color-surface-dim:                #d9dadb;
-  --color-surface-bright:             #f8f9fa;
+  /* Surfaces — page background stays soft; elevated containers step up to white */
+  --color-background:                 #e4e7ec;
+  --color-surface:                    #e4e7ec;
+  --color-surface-dim:                #cdd2d9;
+  --color-surface-bright:             #eef0f3;
   --color-surface-container-lowest:   #ffffff;
-  --color-surface-container-low:      #f3f4f5;
-  --color-surface-container:          #edeeef;
-  --color-surface-container-high:     #e7e8e9;
-  --color-surface-container-highest:  #e1e3e4;
-  --color-surface-variant:            #e1e3e4;
+  --color-surface-container-low:      #eef1f4;
+  --color-surface-container:          #e0e4ea;
+  --color-surface-container-high:     #d3d8df;
+  --color-surface-container-highest:  #c6ccd4;
+  --color-surface-variant:            #d3d8df;
   --color-inverse-surface:            #2e3132;
   --color-inverse-on-surface:         #f0f1f2;
 
@@ -71,6 +71,13 @@
   --color-error-container:            #ffdad6;
   --color-on-error-container:         #93000a;
 
+  /* Charts (Recharts — resolved to hex in chart-colors.ts) */
+  --color-chart-grid:                 #d5d7d9;
+  --color-chart-axis:                 #464554;
+  --color-chart-tooltip-bg:           #2e3132;
+  --color-chart-tooltip-text:         #f0f1f2;
+  --color-chart-plot:                 #ffffff;
+
   /* Typography */
   --font-headline: "Space Grotesk", sans-serif;
   --font-body:     "Inter", sans-serif;
@@ -92,26 +99,26 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .dark {
-  /* Surfaces */
-  --color-background:                 #111315;
-  --color-surface:                    #111315;
-  --color-surface-dim:                #0d0f10;
-  --color-surface-bright:             #1d2021;
-  --color-surface-container-lowest:   #0d0f10;
-  --color-surface-container-low:      #191c1d;
-  --color-surface-container:          #1d2021;
-  --color-surface-container-high:     #272a2b;
-  --color-surface-container-highest:  #323536;
-  --color-surface-variant:            #464554;
+  /* Surfaces — soft charcoal base with clear elevation steps (readable cards/heroes) */
+  --color-background:                 #1e2226;
+  --color-surface:                    #1e2226;
+  --color-surface-dim:                #181b1f;
+  --color-surface-bright:             #2a3036;
+  --color-surface-container-lowest:   #2a3036;
+  --color-surface-container-low:      #343b42;
+  --color-surface-container:          #3e464e;
+  --color-surface-container-high:     #49525a;
+  --color-surface-container-highest:  #565f68;
+  --color-surface-variant:            #6b6978;
   --color-inverse-surface:            #e2e3e4;
   --color-inverse-on-surface:         #2e3132;
 
   /* On-surface / text */
-  --color-on-background:              #e2e3e4;
-  --color-on-surface:                 #e2e3e4;
-  --color-on-surface-variant:         #c5c3d2;
-  --color-outline:                    #918f9e;
-  --color-outline-variant:            #464554;
+  --color-on-background:              #f3f4f5;
+  --color-on-surface:                 #f3f4f5;
+  --color-on-surface-variant:         #e0deef;
+  --color-outline:                    #b8b5c8;
+  --color-outline-variant:            #848194;
 
   /* Primary — Indigo */
   --color-primary:                    #c0c1ff;
@@ -138,6 +145,13 @@
   --color-on-error:                   #690005;
   --color-error-container:            #93000a;
   --color-on-error-container:         #ffdad6;
+
+  /* Charts — brighter grid/axes on elevated panels */
+  --color-chart-grid:                 #8b95a3;
+  --color-chart-axis:                 #e8e6f5;
+  --color-chart-tooltip-bg:           #49525a;
+  --color-chart-tooltip-text:         #f3f4f5;
+  --color-chart-plot:                 #343b42;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -164,4 +178,244 @@ body {
 /* Prevent scrollbar layout shift */
 html {
   scrollbar-gutter: stable;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ANALYTICS HERO / SECTION PANELS (dark-mode visibility)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.analytics-hero-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 38%, transparent);
+  background-color: var(--color-surface-container-lowest);
+  box-shadow:
+    0 1px 2px rgba(25, 28, 29, 0.05),
+    0 4px 16px rgba(25, 28, 29, 0.04);
+}
+
+.dark .analytics-hero-panel {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 58%, transparent);
+  background-color: var(--color-surface-container);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--color-outline-variant) 22%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.22);
+}
+
+.analytics-section-panel {
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 36%, transparent);
+  background-color: var(--color-surface-container-lowest);
+  box-shadow:
+    0 1px 2px rgba(25, 28, 29, 0.05),
+    0 2px 8px rgba(25, 28, 29, 0.03);
+}
+
+.dark .analytics-section-panel {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
+  background-color: var(--color-surface-container-low);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-outline-variant) 18%, transparent);
+}
+
+.analytics-hero-sidebar {
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 34%, transparent);
+  background-color: color-mix(in srgb, var(--color-surface-container-lowest) 92%, var(--color-surface-container-low));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(25, 28, 29, 0.04);
+}
+
+.dark .analytics-hero-sidebar {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 55%, transparent);
+  background-color: color-mix(in srgb, var(--color-surface-container-high) 88%, transparent);
+}
+
+.analytics-hero-accent {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.analytics-hero-accent--teams {
+  background-image:
+    radial-gradient(circle at top right, rgba(13, 148, 136, 0.16), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(70, 72, 212, 0.14), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--teams {
+  background-image:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.34), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(192, 193, 255, 0.28), transparent 28rem);
+}
+
+.analytics-hero-accent--features {
+  background-image:
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.15), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.12), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--features {
+  background-image:
+    radial-gradient(circle at top right, rgba(167, 139, 250, 0.34), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.26), transparent 28rem);
+}
+
+.analytics-hero-accent--flow {
+  background-image:
+    radial-gradient(circle at top right, rgba(8, 145, 178, 0.15), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(124, 58, 237, 0.12), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--flow {
+  background-image:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.32), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(167, 139, 250, 0.26), transparent 28rem);
+}
+
+.analytics-hero-accent--bottleneck {
+  background-image:
+    radial-gradient(circle at top right, rgba(194, 65, 12, 0.15), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(8, 145, 178, 0.12), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--bottleneck {
+  background-image:
+    radial-gradient(circle at top right, rgba(251, 146, 60, 0.34), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(34, 211, 238, 0.26), transparent 28rem);
+}
+
+.analytics-hero-accent--investment {
+  background-image:
+    radial-gradient(circle at top right, rgba(70, 72, 212, 0.16), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.12), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--investment {
+  background-image:
+    radial-gradient(circle at top right, rgba(192, 193, 255, 0.32), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.26), transparent 28rem);
+}
+
+.analytics-hero-accent--customer {
+  background-image:
+    radial-gradient(circle at top right, rgba(70, 72, 212, 0.16), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.12), transparent 28rem);
+}
+
+.dark .analytics-hero-accent--customer {
+  background-image:
+    radial-gradient(circle at top right, rgba(192, 193, 255, 0.32), transparent 34rem),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.26), transparent 28rem);
+}
+
+.analytics-hero-accent--dora {
+  background-image:
+    radial-gradient(circle at top right, rgba(70, 72, 212, 0.12), transparent 24rem),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.08), transparent 20rem);
+}
+
+.dark .analytics-hero-accent--dora {
+  background-image:
+    radial-gradient(circle at top right, rgba(192, 193, 255, 0.3), transparent 24rem),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.22), transparent 20rem);
+}
+
+.analytics-hero-accent--overview {
+  background-image:
+    radial-gradient(circle at top right, rgba(70, 72, 212, 0.1), transparent 28rem),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.08), transparent 24rem);
+}
+
+.dark .analytics-hero-accent--overview {
+  background-image:
+    radial-gradient(circle at top right, rgba(192, 193, 255, 0.3), transparent 28rem),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.22), transparent 24rem);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ANALYTICS FILTER PANELS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.analytics-filter-panel {
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 36%, transparent);
+  background-color: var(--color-surface-container-lowest);
+  box-shadow:
+    0 1px 2px rgba(25, 28, 29, 0.05),
+    0 2px 8px rgba(25, 28, 29, 0.03);
+}
+
+.dark .analytics-filter-panel {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
+  background-color: var(--color-surface-container);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--color-outline-variant) 20%, transparent),
+    0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.analytics-filter-input {
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 42%, transparent);
+  background-color: var(--color-surface-container-lowest);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
+  box-shadow: 0 1px 2px rgba(25, 28, 29, 0.04);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.analytics-filter-input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.dark .analytics-filter-input {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 55%, transparent);
+  background-color: var(--color-surface-container-high);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent);
+}
+
+.dark .analytics-filter-input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.analytics-filter-segment {
+  display: inline-flex;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 36%, transparent);
+  background-color: var(--color-surface-container);
+  padding: 0.25rem;
+}
+
+.dark .analytics-filter-segment {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  background-color: var(--color-surface-container);
+}
+
+.analytics-chart-plot {
+  border-radius: 0.75rem;
+  background-color: var(--color-chart-plot);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ELEVATED PANELS (admin + inline cards)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.elevated-panel {
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 34%, transparent);
+  background-color: var(--color-surface-container-lowest);
+  box-shadow:
+    0 1px 2px rgba(25, 28, 29, 0.05),
+    0 2px 8px rgba(25, 28, 29, 0.03);
+}
+
+.dark .elevated-panel {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
+  background-color: var(--color-surface-container-low);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-outline-variant) 18%, transparent);
 }

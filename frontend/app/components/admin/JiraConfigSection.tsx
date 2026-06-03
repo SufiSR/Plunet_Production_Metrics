@@ -4,10 +4,13 @@ import type { AdminConfigResponse, AdminConfigPatch } from "@/types/admin";
 import { SecretInput } from "./SecretInput";
 import { TagListInput } from "./TagListInput";
 
+export type JiraConfigSectionMode = "full" | "secrets" | "rules";
+
 interface JiraConfigSectionProps {
   config: AdminConfigResponse;
   patch: AdminConfigPatch;
   onPatch: (updates: AdminConfigPatch) => void;
+  mode?: JiraConfigSectionMode;
 }
 
 function TextInput({
@@ -43,19 +46,30 @@ function TextInput({
   );
 }
 
-export function JiraConfigSection({ config, patch, onPatch }: JiraConfigSectionProps) {
+export function JiraConfigSection({
+  config,
+  patch,
+  onPatch,
+  mode = "full",
+}: JiraConfigSectionProps) {
   const v = (key: keyof AdminConfigResponse) =>
     (patch[key as keyof AdminConfigPatch] ?? config[key]) as string;
+  const showSecrets = mode === "full" || mode === "secrets";
+  const showRules = mode === "full" || mode === "rules";
 
   return (
     <section className="bg-surface-container-lowest p-10 rounded-2xl">
       <div className="flex justify-between items-start mb-10">
         <div>
           <h2 className="text-2xl font-editorial font-semibold tracking-tight text-on-surface mb-1">
-            Jira Configuration
+            Jira {mode === "secrets" ? "connection" : "configuration"}
           </h2>
           <p className="text-sm text-on-surface-variant">
-            Connect your Jira instance for bug tracking and worklog data.
+            {mode === "secrets"
+              ? "Shared by the DORA Jira collector and Jira Analytics ingestion."
+              : mode === "rules"
+                ? "Query filters and custom fields for DORA metrics (CFR, MTTR, lead time)."
+                : "Connect your Jira instance for bug tracking and worklog data."}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-surface-container px-4 py-1.5 rounded-full">
@@ -69,38 +83,44 @@ export function JiraConfigSection({ config, patch, onPatch }: JiraConfigSectionP
       </div>
 
       <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <TextInput
-            id="jira_url"
-            label="Instance URL"
-            value={v("jira_url")}
-            placeholder="https://company.atlassian.net"
-            onChange={(val) => onPatch({ jira_url: val })}
-          />
-          <TextInput
-            id="jira_username"
-            label="Username / Email"
-            value={v("jira_username")}
-            placeholder="user@company.com"
-            onChange={(val) => onPatch({ jira_username: val })}
-          />
-        </div>
+        {showSecrets ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <TextInput
+                id="jira_url"
+                label="Instance URL"
+                value={v("jira_url")}
+                placeholder="https://company.atlassian.net"
+                onChange={(val) => onPatch({ jira_url: val })}
+              />
+              <TextInput
+                id="jira_username"
+                label="Username / Email"
+                value={v("jira_username")}
+                placeholder="user@company.com"
+                onChange={(val) => onPatch({ jira_username: val })}
+              />
+            </div>
 
-        <SecretInput
-          id="jira_token"
-          label="API Token"
-          hint={config.jira_token_hint ?? null}
-          helpText="Generate at id.atlassian.com → Security → API tokens."
-          onChange={(val) => {
-            if (val) onPatch({ jira_token: val });
-            else {
-              const next = { ...patch };
-              delete next.jira_token;
-              onPatch(next);
-            }
-          }}
-        />
+            <SecretInput
+              id="jira_token"
+              label="API Token"
+              hint={config.jira_token_hint ?? null}
+              helpText="Generate at id.atlassian.com → Security → API tokens."
+              onChange={(val) => {
+                if (val) onPatch({ jira_token: val });
+                else {
+                  const next = { ...patch };
+                  delete next.jira_token;
+                  onPatch(next);
+                }
+              }}
+            />
+          </>
+        ) : null}
 
+        {showRules ? (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <TagListInput
             id="excluded_projects"
@@ -147,6 +167,8 @@ export function JiraConfigSection({ config, patch, onPatch }: JiraConfigSectionP
             onChange={(vals) => onPatch({ mttr_alpha_priorities: vals })}
           />
         </div>
+          </>
+        ) : null}
       </div>
     </section>
   );

@@ -22,16 +22,16 @@ The "Layering Principle" still applies: higher elevation = lighter tonal surface
 
 | Token | Dark Value | Light Equivalent | Notes |
 |---|---|---|---|
-| `background` | `#111315` | `#f8f9fa` | Page canvas |
-| `surface` | `#111315` | `#f8f9fa` | Same as background |
-| `surface-dim` | `#0d0f10` | `#d9dadb` | Dimmed/muted surface |
-| `surface-bright` | `#1d2021` | `#f8f9fa` | Emphasized bright surface |
-| `surface-container-lowest` | `#0d0f10` | `#ffffff` | Cards on dark bg |
-| `surface-container-low` | `#191c1d` | `#f3f4f5` | Slight step up |
-| `surface-container` | `#1d2021` | `#edeeef` | Standard container |
-| `surface-container-high` | `#272a2b` | `#e7e8e9` | Elevated container |
-| `surface-container-highest` | `#323536` | `#e1e3e4` | Highest elevation |
-| `surface-variant` | `#464554` | `#e1e3e4` | Variant surface |
+| `background` | `#1e2226` | `#f8f9fa` | Page canvas (soft charcoal) |
+| `surface` | `#1e2226` | `#f8f9fa` | Same as background |
+| `surface-dim` | `#181b1f` | `#d9dadb` | Dimmed/muted surface |
+| `surface-bright` | `#2a3036` | `#f8f9fa` | Emphasized bright surface |
+| `surface-container-lowest` | `#2a3036` | `#ffffff` | Cards on dark bg (lighter than canvas) |
+| `surface-container-low` | `#343b42` | `#f3f4f5` | Slight step up |
+| `surface-container` | `#3e464e` | `#edeeef` | Standard container |
+| `surface-container-high` | `#49525a` | `#e7e8e9` | Elevated container |
+| `surface-container-highest` | `#565f68` | `#e1e3e4` | Highest elevation |
+| `surface-variant` | `#6b6978` | `#e1e3e4` | Variant surface |
 | `inverse-surface` | `#e2e3e4` | `#2e3132` | Snackbar/tooltip bg |
 | `inverse-on-surface` | `#2e3132` | `#f0f1f2` | Text on inverse surface |
 
@@ -39,11 +39,11 @@ The "Layering Principle" still applies: higher elevation = lighter tonal surface
 
 | Token | Dark Value | Light Equivalent |
 |---|---|---|
-| `on-background` | `#e2e3e4` | `#191c1d` |
-| `on-surface` | `#e2e3e4` | `#191c1d` |
-| `on-surface-variant` | `#c5c3d2` | `#464554` |
-| `outline` | `#918f9e` | `#767586` |
-| `outline-variant` | `#464554` | `#c7c4d7` |
+| `on-background` | `#f3f4f5` | `#191c1d` |
+| `on-surface` | `#f3f4f5` | `#191c1d` |
+| `on-surface-variant` | `#e0deef` | `#464554` |
+| `outline` | `#b8b5c8` | `#767586` |
+| `outline-variant` | `#848194` | `#c7c4d7` |
 
 ### Primary (Indigo — Dark)
 
@@ -101,12 +101,14 @@ The "Layering Principle" still applies: higher elevation = lighter tonal surface
 
 ### Surface Layering (Inverted)
 
-In light mode, cards are bright white on a light gray canvas. In dark mode, the same cards use `surface-container-lowest` (`#0d0f10`) on a `background` (`#111315`) canvas. The delta is subtle — this is intentional. The design is not high-contrast by default; it is **low-stimulation dark**, matching the "premium editorial" feel.
+In light mode, cards are bright white on a light gray canvas. In dark mode, the palette uses a **soft charcoal** base (`#1e2226`) with clearly lighter container steps so heroes, sections, and tables remain easy to scan.
 
 > **Correct card stack (dark):**
-> - Page background: `background` (`#111315`)
-> - Card bg: `surface-container-lowest` (`#0d0f10`) — slightly deeper, creating the "soft lift"
-> - Hover state: `surface-container-low` (`#191c1d`)
+> - Page background: `background` (`#1e2226`)
+> - Card bg: `surface-container-lowest` (`#2a3036`) — one step lighter than the canvas
+> - Hero panels (analytics): `surface-container` (`#3e464e`) via `.analytics-hero-panel` in dark mode
+> - Section panels: `surface-container-low` (`#343b42`) via `.analytics-section-panel`
+> - Hover state: `surface-container-high` (`#49525a`)
 
 ### The "No-Line Rule" in Dark Mode
 
@@ -151,23 +153,25 @@ backdrop-filter: blur(24px);
 
 ### Chart Colors in Dark Mode
 
-Recharts components must receive explicit color values (CSS vars or resolved hex). When in dark mode, override these chart tokens:
+Recharts does not read CSS variables directly. Use `frontend/lib/chart-colors.ts` (`getChartColors`, `useReportChartTheme`, `useChartSeriesColors`) so charts pick up theme tokens.
 
-| Usage | Light | Dark |
+| Token | Light | Dark |
 |---|---|---|
-| Primary line / area fill | `#4648d4` | `#c0c1ff` |
-| Grid lines | `#edeeef` | `#1d2021` |
-| Axis labels | `#464554` | `#c5c3d2` |
-| Tooltip bg | `#191c1d` | `#e2e3e4` |
-| Tooltip text | `#f0f1f2` | `#2e3132` |
-| Area gradient (0% opacity) | `#4648d4` | `#c0c1ff` |
+| `chart-grid` | `#d5d7d9` | `#8b95a3` (65% opacity on plot) |
+| `chart-axis` | `#464554` | `#e8e6f5` |
+| `chart-plot` | `#ffffff` | `#343b42` |
+| `chart-tooltip-bg` | `#2e3132` | `#49525a` |
+| `chart-tooltip-text` | `#f0f1f2` | `#f3f4f5` |
+| Series palette | `CHART_SERIES_LIGHT` | `CHART_SERIES_DARK` (brighter saturated hues) |
+
+Chart containers use `.analytics-chart-plot` for a slightly elevated plot background in dark mode.
 
 ---
 
 ## 4. Do's and Don'ts (Dark Mode Addendum)
 
 ### Do
-- **Do** use `surface-container-lowest` (`#0d0f10`) as the card background, not pure black (`#000000`). Pure black creates excessive contrast.
+- **Do** use `surface-container-lowest` (`#2a3036`) as the card background, not pure black (`#000000`). Pure black creates excessive contrast.
 - **Do** use `primary` (`#c0c1ff`) lavender as the accent — it draws the eye without glare.
 - **Do** increase chart grid line opacity in dark mode to maintain visibility (e.g. opacity 20% on `#464554` instead of using `surface-container`).
 

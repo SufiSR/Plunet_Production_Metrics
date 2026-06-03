@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import AdminRawTablesPage from "@/app/admin/raw-tables/page";
+import AdminRawTablesPage from "@/app/admin_legacy/raw-tables/page";
 
 const pushMock = jest.fn();
 const meMock = jest.fn();

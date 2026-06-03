@@ -8,7 +8,7 @@ function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").replace(/\/$/, "");
-  const defaultNext = `${basePath}/admin/config`;
+  const defaultNext = `${basePath}/admin`;
   const requestedNext = searchParams.get("next");
   const normalizedRequestedNext = requestedNext?.trim() ?? "";
   const next = (() => {
@@ -19,7 +19,10 @@ function AdminLoginForm() {
     if (basePath && normalizedRequestedNext.startsWith(`${basePath}/`)) {
       return normalizedRequestedNext;
     }
-    if (basePath && normalizedRequestedNext.startsWith("/admin")) {
+    if (
+      basePath &&
+      (normalizedRequestedNext.startsWith("/admin") || normalizedRequestedNext.startsWith("/admin_legacy"))
+    ) {
       return `${basePath}${normalizedRequestedNext}`;
     }
     return normalizedRequestedNext;

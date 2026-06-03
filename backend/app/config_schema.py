@@ -44,9 +44,44 @@ class NotificationsConfig(BaseModel):
     webhook_url: str | None = None
 
 
+class JiraAnalyticsConfig(BaseModel):
+    sync_cron_hour: int = Field(default=4, ge=0, le=23)
+    sync_cron_minute: int = Field(default=30, ge=0, le=59)
+    scheduled_lookback_days: int = Field(
+        default=14,
+        ge=1,
+        description="Issues with updated >= today - N days for scheduled and default manual sync.",
+    )
+
+
+class HrworksConfig(BaseModel):
+    base_url: str = "https://api.hrworks.de/v2"
+    sync_cron_day_of_week: str = "sun"
+    sync_cron_hour: int = Field(default=3, ge=0, le=23)
+    sync_cron_minute: int = Field(default=0, ge=0, le=59)
+    backfill_start_date: str = "2024-01-01"
+    incremental_months_back: int = Field(
+        default=3,
+        ge=0,
+        description="Months before the current month included in incremental HRWorks sync.",
+    )
+    incremental_forecast_months: int = Field(
+        default=6,
+        ge=0,
+        description="Months after the current month included in incremental HRWorks sync.",
+    )
+    persons_batch_size: int = Field(default=1, ge=1, le=1)
+    roster_refresh_hours: int = Field(default=168, ge=1)
+    denied_person_ids: list[str] = Field(
+        default_factory=lambda: ["jirascriptapi@plunet.com"],
+    )
+
+
 class ConfigurationSchema(BaseModel):
     environment: str = "development"
     backend: BackendConfig = Field(default_factory=BackendConfig)
     gitlab: GitLabConfig = Field(default_factory=GitLabConfig)
     jira: JiraConfig = Field(default_factory=JiraConfig)
+    jira_analytics: JiraAnalyticsConfig = Field(default_factory=JiraAnalyticsConfig)
+    hrworks: HrworksConfig = Field(default_factory=HrworksConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)

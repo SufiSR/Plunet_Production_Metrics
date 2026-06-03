@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # ── Stage 1: install dependencies ────────────────────────────────────────────
 FROM node:20-alpine AS deps
 
@@ -31,7 +33,7 @@ ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 ARG BACKEND_INTERNAL_URL=http://localhost:8000
 ENV BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL}
 
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 
 # ── Stage 3: minimal runtime ──────────────────────────────────────────────────

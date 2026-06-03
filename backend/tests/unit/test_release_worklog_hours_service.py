@@ -5,13 +5,54 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+import app.models  # noqa: F401
+from app.jira_analytics.allocation.role_mapping import allocation_role_for_worklog_role
+from app.jira_analytics.models import JiraUser, JiraUserRoleAssignment
 from app.models.base import Base
+from datetime import date as date_type
 from app.models.issue_worklog import IssueWorklog
 from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.repository import Repository
 from app.models.release import Release
 from app.services.release_worklog_hours_service import build_release_worklog_hours_response
+
+
+def _seed_worklog_role_assignments(db: Session, assignments: list[dict[str, str]]) -> None:
+    for item in assignments:
+        account_id = (item.get("jira_account_id") or "").strip() or None
+        author = (item.get("author") or "").strip() or None
+        role_key = (item.get("role") or "").strip()
+        team = (item.get("team") or "").strip() or None
+        if not account_id and not author:
+            continue
+        if account_id:
+            user = JiraUser(
+                account_id=account_id,
+                display_name=author or account_id,
+                email_address=f"{account_id}@test.local",
+            )
+        else:
+            synthetic = author.lower().replace(" ", ".")
+            user = JiraUser(
+                account_id=f"author:{synthetic}",
+                display_name=author,
+                email_address=f"{synthetic}@test.local",
+            )
+        db.add(user)
+        db.flush()
+        db.add(
+            JiraUserRoleAssignment(
+                jira_user_id=user.id,
+                user_account_id=user.account_id if account_id else None,
+                user_email=user.email_address or "",
+                display_name=user.display_name or "",
+                role_name=allocation_role_for_worklog_role(role_key),
+                team_name=team,
+                valid_from=date_type(2020, 1, 1),
+            )
+        )
+    db.flush()
 
 
 def _session() -> Session:
@@ -37,19 +78,24 @@ def test_build_release_worklog_hours_response_none_when_no_release() -> None:
     assert out is None
 
 
-def test_build_release_worklog_hours_aggregates_role_and_team_and_denylist() -> None:
+def test_build_release_worklog_hours_aggregates_role_and_team_and_excludes_reporting_users() -> None:
     t = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    settings = {
-        "jira": {
-            "jira_worklog_author_denylist": ["bot-id"],
-            "jira_worklog_user_assignments": [
+    settings: dict = {}
+    with _session() as db:
+        _seed_worklog_role_assignments(
+            db,
+            [
                 {"jira_account_id": "u-pm", "role": "pm", "team": "TeamA"},
                 {"jira_account_id": "u-dev", "role": "dev", "team": "TeamA"},
                 {"jira_account_id": "u-qa", "role": "qa", "team": "TeamB"},
+                {"jira_account_id": "u-excluded", "role": "dev", "team": "TeamA"},
+                {"jira_account_id": "bot-id", "role": "sup", "team": "Automation"},
             ],
-        },
-    }
-    with _session() as db:
+        )
+        excluded_user = db.query(JiraUser).filter_by(account_id="u-excluded").one()
+        excluded_user.reporting_excluded = True
+        bot_user = db.query(JiraUser).filter_by(account_id="bot-id").one()
+        bot_user.reporting_excluded = True
         db.add(
             Repository(
                 id=1,
@@ -149,6 +195,15 @@ def test_build_release_worklog_hours_aggregates_role_and_team_and_denylist() -> 
                     started=t,
                     time_spent_seconds=9999,
                 ),
+                IssueWorklog(
+                    id=6,
+                    bug_id=1,
+                    jira_worklog_id="w6",
+                    jira_account_id="u-excluded",
+                    author="Excluded",
+                    started=t,
+                    time_spent_seconds=9999,
+                ),
             ]
         )
         db.commit()
@@ -176,14 +231,12 @@ def test_build_release_worklog_hours_aggregates_role_and_team_and_denylist() -> 
 
 def test_build_release_worklog_hours_falls_back_to_author_assignment_when_account_missing() -> None:
     t = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    settings = {
-        "jira": {
-            "jira_worklog_user_assignments": [
-                {"author": "Legacy User", "role": "dev", "team": "LegacyTeam"},
-            ],
-        },
-    }
+    settings: dict = {}
     with _session() as db:
+        _seed_worklog_role_assignments(
+            db,
+            [{"author": "Legacy User", "role": "dev", "team": "LegacyTeam"}],
+        )
         db.add(
             Repository(
                 id=1,

@@ -90,3 +90,37 @@ describe("adminApiClient.testWebhook", () => {
     });
   });
 });
+
+describe("adminApiClient feature families", () => {
+  it("creates a feature family", async () => {
+    mockFetch(201, { family: { id: 1, name: "Invoice" }, members: [] });
+    await adminApiClient.createFeatureFamily({
+      name: "Invoice",
+      suggestion_keywords: ["invoice"],
+    });
+    const call = (global.fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/admin/jira-feature-families");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body as string)).toEqual({
+      name: "Invoice",
+      suggestion_keywords: ["invoice"],
+    });
+  });
+
+  it("updates feature family members", async () => {
+    mockFetch(200, { family: { id: 1, name: "Invoice" }, members: [] });
+    await adminApiClient.putFeatureFamilyMembers(1, { feature_root_ids: [10, 11] });
+    const call = (global.fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/admin/jira-feature-families/1/members");
+    expect(call[1].method).toBe("PUT");
+    expect(JSON.parse(call[1].body as string)).toEqual({ feature_root_ids: [10, 11] });
+  });
+
+  it("encodes suggestion ids for accept", async () => {
+    mockFetch(200, { family: { id: 1, name: "Invoice" }, members: [] });
+    await adminApiClient.acceptFeatureFamilySuggestion("1-10-a/b");
+    const call = (global.fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/admin/jira-feature-families/suggestions/1-10-a%2Fb/accept");
+    expect(call[1].method).toBe("POST");
+  });
+});

@@ -15,6 +15,15 @@ const nextConfig = {
   reactStrictMode: true,
   // Produces .next/standalone for minimal Docker image (no node_modules copy needed).
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/analytics_new",
+        destination: "/analytics",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8000";

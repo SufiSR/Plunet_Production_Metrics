@@ -233,12 +233,16 @@ def build_sync_status_response(
     err_msg = row.error_message if isinstance(row.error_message, str) else None
     if err_msg is not None and not err_msg.strip():
         err_msg = None
+    trigger = details.get("trigger")
+    if not isinstance(trigger, str) or not trigger.strip():
+        trigger = None
 
     last_block = LastSyncBlock(
         started_at=started_at,
         finished_at=finished_at,
         duration_seconds=duration_seconds,
         status=_map_run_status(row.status),
+        trigger=trigger,
         collectors=collectors,
         snapshots_generated=int(snaps),
         snapshot_generated_at=snap_at,

@@ -9,27 +9,12 @@ from app.models.issue_worklog import IssueWorklog
 from app.models.merge_request import MergeRequest
 from app.models.production_bug import ProductionBug
 from app.models.release import Release
-from app.schemas.jira_worklog_assignments import JiraWorklogUserAssignment
 from app.schemas.releases import ReleaseWorklogHoursByRole, ReleaseWorklogHoursResponse, ReleaseWorklogTeamHoursRow
-from app.services.jira_worklog_settings import read_worklog_assignments_from_settings, read_worklog_denylist_from_settings
+from app.services.jira_user_assignments import list_assignments_maps, reporting_excluded_account_ids
 
 
 def _seconds_as_hours(seconds: int) -> float:
     return round(seconds / 3600.0, 4)
-
-
-def _assignment_maps(
-    assignments: list[JiraWorklogUserAssignment],
-) -> tuple[dict[str, tuple[str, str]], dict[str, tuple[str, str]]]:
-    by_account: dict[str, tuple[str, str]] = {}
-    by_author: dict[str, tuple[str, str]] = {}
-    for a in assignments:
-        pair = (a.role, a.team.strip())
-        if a.jira_account_id:
-            by_account[a.jira_account_id.strip()] = pair
-        if a.author:
-            by_author[a.author.strip().lower()] = pair
-    return by_account, by_author
 
 
 def _worklog_rows_for_release_tag(
@@ -79,10 +64,9 @@ def build_release_worklog_hours_response(
     if rel is None:
         return None
 
-    deny_raw = read_worklog_denylist_from_settings(settings_json)
-    deny_ids = frozenset(deny_raw)
-    assignments = read_worklog_assignments_from_settings(settings_json)
-    by_account, by_author = _assignment_maps(assignments)
+    del settings_json
+    deny_ids = reporting_excluded_account_ids(db)
+    by_account, by_author = list_assignments_maps(db)
 
     rows = _worklog_rows_for_release_tag(
         db, repository_id=repository_id, tag_name=tag_name, deny_ids=deny_ids

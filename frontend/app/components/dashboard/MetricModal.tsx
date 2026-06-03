@@ -16,6 +16,7 @@ import { useMetricsCurrent, useMetricsHistory } from "@/lib/hooks";
 import { METRIC_EXPLANATIONS } from "@/lib/metric-explanations";
 import { DoraBadge } from "./DoraBadge";
 import { getChartColors } from "@/lib/chart-colors";
+import { sortRecordsByPeriodDesc } from "@/lib/jira-analytics-sort";
 import type { DoraLevel, LeadTimeDiagnostics, MetricsCurrentResponse } from "@/types/api";
 
 function formatLeadDiagLine(d: LeadTimeDiagnostics): string {
@@ -50,12 +51,15 @@ export function MetricModal() {
       : null;
 
   const sparklineData =
-    history?.data_points?.map((p) => ({
-      date: p.date,
-      value: activeMetricModal
-        ? (p as unknown as Record<string, number | null>)[activeMetricModal]
-        : null,
-    })) ?? [];
+    sortRecordsByPeriodDesc(
+      history?.data_points?.map((p) => ({
+        date: p.date,
+        period: p.date,
+        value: activeMetricModal
+          ? (p as unknown as Record<string, number | null>)[activeMetricModal]
+          : null,
+      })) ?? [],
+    );
 
   const colors = getChartColors();
 

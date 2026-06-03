@@ -10,21 +10,6 @@ from app.models.issue_worklog import IssueWorklog
 from app.schemas.jira_worklog_assignments import JiraWorklogUserAssignment
 
 
-def read_worklog_denylist_from_settings(settings_json: dict[str, Any]) -> list[str]:
-    jr = settings_json.get("jira")
-    if not isinstance(jr, dict):
-        return []
-    raw = jr.get("jira_worklog_author_denylist")
-    if not isinstance(raw, list):
-        return []
-    out: list[str] = []
-    for item in raw:
-        s = str(item).strip()
-        if s:
-            out.append(s)
-    return list(dict.fromkeys(out))
-
-
 def read_worklog_assignments_from_settings(
     settings_json: dict[str, Any],
 ) -> list[JiraWorklogUserAssignment]:
@@ -66,37 +51,19 @@ def normalize_assignments_for_patch(
     return parsed
 
 
-def normalize_denylist_for_patch(raw: list[str] | None) -> list[str] | None:
-    if raw is None:
-        return None
-    out: list[str] = []
-    for item in raw:
-        s = str(item).strip()
-        if s:
-            out.append(s)
-    return list(dict.fromkeys(out))
-
-
-def _distinct_authors_select(denylist: list[str]):
-    deny_set = set(denylist)
-    base = select(IssueWorklog.jira_account_id, IssueWorklog.author).distinct()
-    if deny_set:
-        base = base.where(
-            IssueWorklog.jira_account_id.is_(None)
-            | (~IssueWorklog.jira_account_id.in_(tuple(deny_set))))
-    return base
+def _distinct_authors_select():
+    return select(IssueWorklog.jira_account_id, IssueWorklog.author).distinct()
 
 
 def list_distinct_worklog_authors_page(
     db: Session,
     *,
-    denylist: list[str],
     page: int,
     size: int,
 ) -> tuple[list[tuple[str | None, str | None]], int]:
     # Postgres: SELECT DISTINCT ... ORDER BY expressions not in SELECT is invalid (42P10).
     # Distinct pairs in a subquery, then sort/paginate in the outer SELECT.
-    base = _distinct_authors_select(denylist)
+    base = _distinct_authors_select()
     authors_sq = base.subquery()
     total = int(db.execute(select(func.count()).select_from(authors_sq)).scalar_one())
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Protects /admin/* routes by checking for the signed session cookie issued
+ * Protects /admin/* and /admin_legacy/* routes by checking for the signed session cookie issued
  * by the backend (`dora_session`). The API remains authoritative for admin
  * routes; this middleware only avoids a flash of protected content.
  */
@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
       : pathname;
 
   // Allow login page through unconditionally
-  if (normalizedPath === "/admin/login") {
+  if (normalizedPath === "/admin/login" || normalizedPath === "/admin_legacy/login") {
     return NextResponse.next();
   }
 
@@ -32,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/admin_legacy/:path*"],
 };

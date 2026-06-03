@@ -6,9 +6,13 @@ from fastapi.responses import JSONResponse
 from app.api import (
     admin_config,
     admin_data_health,
-    admin_jira_worklog,
+    admin_jira_feature_families,
+    admin_hrworks,
+    admin_jira_analytics,
+    admin_jira_users,
     admin_raw_tables,
     auth,
+    jira_analytics_reports,
     metrics_public,
     repositories_public,
     sync_public,
@@ -22,8 +26,16 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_config.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_data_health.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_raw_tables.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_jira_worklog.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_jira_users.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_jira_feature_families.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_jira_analytics.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_hrworks.router, prefix="/admin", tags=["admin"])
 api_router.include_router(metrics_public.router, prefix="/metrics", tags=["metrics"])
+api_router.include_router(
+    jira_analytics_reports.router,
+    prefix="/jira-analytics",
+    tags=["jira-analytics"],
+)
 api_router.include_router(repositories_public.router, prefix="/repositories", tags=["repositories"])
 api_router.include_router(sync_public.router, prefix="/sync", tags=["sync"])
 
@@ -41,9 +53,5 @@ def api_health(db: SessionDep) -> JSONResponse:
                 "jira": ComponentHealth(status="DOWN"),
             },
         )
-    code = (
-        status.HTTP_200_OK
-        if body.status == "UP"
-        else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
+    code = status.HTTP_200_OK if body.status == "UP" else status.HTTP_503_SERVICE_UNAVAILABLE
     return JSONResponse(status_code=code, content=body.model_dump(mode="json"))

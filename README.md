@@ -1,138 +1,165 @@
-# DORA Metrics Server
+# Engineering Analytics Platform
 
-An automated platform for measuring, aggregating, and visualizing DORA-style software delivery performance metrics. The application combines data from **GitLab** (commits, merge requests, tags/releases) and **Jira** (bugs, incidents, worklogs) to generate daily-updated dashboards that can be embedded into Confluence or viewed standalone.
+This repository contains an internal engineering analytics platform for delivery performance, portfolio investment, workflow bottlenecks, team capacity, and data quality. The original DORA dashboard is now one module inside a larger application that combines data from GitLab, Jira, and HRWorks.
 
-## 📊 Overview
+The project has changed enough that it should be treated as a new application when publishing to remote hosting. Prefer creating new GitLab/GitHub projects and pushing a clean baseline there instead of overwriting the old DORA-only repositories.
 
-The DORA Metrics Server calculates both core DORA metrics and customized extended KPIs tailored to the organization's delivery process:
+## Product Scope
 
-### Core Metrics
+The application answers operational and leadership questions such as:
 
-- **Deployment Frequency**: How often customer releases are created.
-- **Lead Time for Changes**: The time from the first commit to the first customer release (measured per target branch).
-- **Change Failure Rate (CFR)**: The percentage of customer releases that result in healthy production bugs.
-- **MTTR Alpha (Mean Time to Recovery)**: The time from the creation of a Critical/Blocker production bug to the deployment of its fix in a customer release.
+- How frequently do customer releases ship, and how long do changes take to reach customers?
+- Which releases are associated with production failures, and how quickly are high-priority failures restored?
+- Where is engineering capacity going by feature, feature family, theme, team, customer, and investment category?
+- Which workflow states create the most waiting time, passive time, thrashing, or delivery risk?
+- How do HRWorks availability and forecasted capacity compare with Jira-booked work?
+- Can the underlying analytics data be trusted for decision making?
 
-### Extended Metrics
+## Main Modules
 
-- **Release Wait Time**: The time from a Merge Request being merged to its inclusion in a customer release.
-- **Lead Post-Production**: The time from a Jira issue being marked "Ready for QA" to the Merge Request being merged.
-- **Work vs Waited**: Comparison between logged work time (`total_worklog_seconds`) and calendar elapsed time.
-- **Rework Rate**: (Planned) Comparison of patch density per minor release against a baseline.
+- **DORA analytics**: deployment frequency, lead time, change failure rate, MTTR Alpha, release drilldowns, worklog hours, and linkage health.
+- **Jira Analytics**: issue warehouse, worklog allocation, feature and feature-family costing, portfolio investment reports, workflow bottleneck analysis, team execution reports, customer effort, and data-quality checks.
+- **HRWorks capacity**: roster and monthly availability ingestion used by team capacity, utilization, and forecast reports.
+- **Admin console**: scheduler settings, credentials, manual ingestion triggers, sync progress, data health, raw table inspection, Jira user/team assignments, and feature-family management.
 
-## 🛠 Technology Stack
+## Technology Stack
 
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.x (Sync), APScheduler, httpx, Alembic
-- **Database**: PostgreSQL 16
-- **Frontend**: Next.js 14 (App Router), React 18, TanStack Query v5, Recharts, Tailwind CSS
-- **Deployment**: Docker, Docker Compose, Caddy (for TLS/Reverse Proxy)
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.x, Alembic, APScheduler, httpx, PostgreSQL.
+- **Frontend**: Next.js 14 App Router, React 18, TypeScript, TanStack Query, Zustand, Recharts, Tailwind CSS.
+- **Data store**: PostgreSQL 16.
+- **Runtime**: Docker Compose for local/runtime orchestration; Caddy or another reverse proxy can sit in front for TLS.
 
-## 🏗 Architecture & Data Flow
+## Architecture
 
-The system runs a **Daily Data Refresh** (typically scheduled for 02:00 AM) that pulls data to ensure the dashboard reflects the latest state without hammering source APIs continuously:
+The platform uses three scheduled ingestion paths:
 
-1. **GitLab Sync**: Fetches repositories, tags, and merged MRs.
-2. **Jira Sync**: Fetches production bugs, worklogs, and changelog events.
-3. **Cross-System Resolution**: Maps Jira bugs to GitLab releases for CFR and MTTR metrics.
-4. **Snapshot Generation**: Pre-calculates metric snapshots for the dashboard to read efficiently.
+1. **DORA nightly pipeline** pulls GitLab releases/tags/MRs and Jira production-bug context, derives cross-system relationships, and refreshes metric snapshots.
+2. **Jira Analytics sync** builds and updates the Jira analytics warehouse for issues, fields, worklogs, sprints, transitions, relationships, workflow classifications, feature memberships, and allocation outputs.
+3. **HRWorks sync** imports person roster and monthly availability so Jira-booked effort can be compared with real capacity.
 
-For full implementation details (source-to-table mappings, derivation rules, and exact metric formulas), see `documentation/PIPELINE_AND_METRICS_DEEP_DIVE.md`.
+APIs are mounted under `/api`. Public analytics endpoints support dashboards and embedded views. Admin endpoints require the configured admin session.
 
-## 🗂 Project Structure
-
-```text
-dora-metrics-server/
-├── backend/                  # Python backend API & data collectors
-│   ├── app/                  # FastAPI app, models, schemas, services
-│   ├── alembic/              # Database migration scripts
-│   ├── tests/                # Unit and integration tests
-│   ├── requirements.txt      # Python dependencies
-│   └── pyproject.toml        # Build system and linting configurations
-├── frontend/                 # Next.js web dashboard
-│   ├── app/                  # Next.js App Router pages and components
-│   ├── lib/                  # Utilities, hooks, and API client
-│   └── types/                # TypeScript type definitions
-├── documentation/            # Current implementation documentation
-├── project_definition_2/     # Legacy specification/reference documents (partially outdated)
-├── configuration.yml         # Application bootstrap configuration
-└── docker-compose.yml        # Local development and deployment orchestration
-```
-
-## 🔐 Access Control (RBAC)
-
-- **Viewer (Default/Unauthenticated)**: Full read-only access to the main dashboard, metric cards, and trend charts. Designed to be safely embedded within Confluence iframes without requiring SSO.
-- **Admin (Authenticated)**: Access to the protected `/admin/config` route to configure GitLab/Jira integrations, API tokens, webhook destinations, and sync schedules. Admin configuration is securely stored in the database.
-
-## 🚀 Local Development
-
-### Prerequisites
-
-- Python 3.12+
-- Node.js 20+
-- PostgreSQL 16
-- Docker & Docker Compose (optional, but recommended for local DB)
-
-### Backend Setup
-
-1. Navigate to the backend directory:
-  ```bash
-   cd backend
-  ```
-2. Create and activate a virtual environment:
-  ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-  ```
-3. Install dependencies:
-  ```bash
-   pip install -r requirements.txt
-  ```
-4. Copy the environment template and configure your local PostgreSQL credentials:
-  ```bash
-   cp ../.env.example .env
-  ```
-5. Run database migrations:
-  ```bash
-   alembic upgrade head
-  ```
-6. Start the development server:
-  ```bash
-   uvicorn app.main:app --reload
-  ```
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-  ```bash
-   cd frontend
-  ```
-2. Install dependencies:
-  ```bash
-   npm install
-  ```
-3. Start the development server:
-  ```bash
-   npm run dev
-  ```
-
-The frontend will be available at `http://localhost:3000`.
-
-## 📖 Documentation Reference
-
-Current implementation documentation lives in `documentation/`:
+For implementation details, see:
 
 - `documentation/APPLICATION_DOCUMENTATION.md`
 - `documentation/PIPELINE_AND_METRICS_DEEP_DIVE.md`
 - `documentation/PROJECT_DEFINITION_2_REVIEW.md`
 
-Legacy planning/spec artifacts remain in `project_definition_2/`, but parts are outdated and should be treated as historical context rather than implementation source of truth.
+## Project Structure
 
-## 🤝 Contributing
+```text
+dora-metrics-server/
+├── backend/
+│   ├── alembic/                 # Database migrations
+│   ├── app/
+│   │   ├── api/                 # FastAPI routers
+│   │   ├── hrworks/             # HRWorks client, extraction, roster, sync pipeline
+│   │   ├── jira_analytics/      # Jira warehouse, allocation, workflow, report services
+│   │   ├── models/              # Core DORA models
+│   │   ├── schemas/             # API schemas
+│   │   └── services/            # DORA pipeline, config, health, metric services
+│   ├── scripts/                 # Manual ingestion helpers
+│   └── tests/
+├── frontend/
+│   ├── app/
+│   │   ├── admin/               # Current admin console
+│   │   ├── admin_legacy/        # Legacy admin screens retained for reference/use
+│   │   ├── analytics/           # Jira Analytics and DORA report pages
+│   │   ├── embed/               # Iframe-friendly dashboard
+│   │   └── components/
+│   ├── lib/
+│   └── types/
+├── documentation/               # Current implementation documentation
+├── project_definition_2/        # Historical planning/spec artifacts
+├── configuration.yml            # Non-secret bootstrap defaults
+└── docker-compose.yml
+```
 
-This repository follows a strict Jira-driven workflow.
+## Local Development
 
-- Always branch and commit against a Jira Epic/Issue (e.g., `git commit -m "DEVOPS-430 <summary>"`).
-- Run the local backend tests (`pytest`) and frontend linting/tests before merging.
-- Database schema changes require an `alembic` migration.
-- Code changes must adhere to the rules outlined in `AGENTS.md` and the existing testing strategies.
+### Prerequisites
 
+- Python 3.12+
+- Node.js 20+
+- PostgreSQL 16, or Docker Compose
+- GitLab, Jira, and HRWorks credentials when running real ingestion
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+On macOS/Linux, activate the environment with `source venv/bin/activate`.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on `http://localhost:3000` by default. The backend runs on `http://localhost:8000`.
+
+### Docker Compose
+
+```bash
+cp .env.docker.example .env
+docker compose up --build
+```
+
+Fill `.env` with real secrets locally. Do not commit populated environment files.
+
+## Configuration and Secrets
+
+Non-secret defaults live in `configuration.yml`. Runtime configuration can also come from database-backed admin settings and environment variables. Secrets such as GitLab tokens, Jira credentials, HRWorks credentials, admin password, and session keys must be provided through environment variables or encrypted admin configuration.
+
+Configuration precedence is documented in `documentation/APPLICATION_DOCUMENTATION.md`.
+
+## Important Routes
+
+- `/` and `/embed`: DORA-oriented dashboard and embeddable view.
+- `/analytics`: analytics command center.
+- `/analytics/dora/*`: DORA report pages.
+- `/analytics/investment/*`, `/analytics/features/*`, `/analytics/flow/*`, `/analytics/bottlenecks/*`, `/analytics/teams/*`, `/analytics/customers/*`: Jira Analytics report families.
+- `/analytics/data-quality`: analytics trust and quality checks.
+- `/admin`: current operations console.
+- `/admin/ingestion/dora`, `/admin/ingestion/jira-analytics`, `/admin/ingestion/hrworks`: manual sync and progress screens.
+- `/admin/schedulers`, `/admin/secrets`, `/admin/jira-analytics/assignments`, `/admin/jira-analytics/feature-families`, `/admin/dora/linkage-health`, `/admin/dora/raw-tables`: admin setup and diagnostics.
+
+## Testing
+
+Backend:
+
+```bash
+cd backend
+pytest
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run typecheck
+npm test
+```
+
+Run focused tests when changing a narrow area. Run broader backend/frontend suites before publishing a new baseline.
+
+## Repository Publishing Guidance
+
+Because this codebase is no longer the old DORA-only application, do not push it blindly to the old GitLab/GitHub remotes. Recommended publication flow:
+
+1. Create new GitLab and GitHub projects for the new platform.
+2. Review and rename project metadata where needed.
+3. Confirm `.env`, credentials, local database dumps, and generated artifacts are ignored.
+4. Create a clean baseline commit.
+5. Add the new remotes and push the baseline branch.
+
+Keep the old repositories available as historical reference and rollback context.

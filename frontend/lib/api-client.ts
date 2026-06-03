@@ -16,6 +16,8 @@ import type {
   PeriodType,
 } from "@/types/api";
 
+import { parseApiErrorBody } from "@/lib/parse-api-error";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 async function request<T>(path: string): Promise<T> {
@@ -25,14 +27,13 @@ async function request<T>(path: string): Promise<T> {
   });
 
   if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
+    let message = parseApiErrorBody(null, res.status);
     try {
-      const body = await res.json();
-      detail = body?.detail ?? detail;
+      message = parseApiErrorBody(await res.json(), res.status);
     } catch {
       // ignore parse error
     }
-    throw new Error(detail);
+    throw new Error(message);
   }
 
   return res.json() as Promise<T>;

@@ -12,6 +12,7 @@ pydantic-settings
 pyyaml
 python-dotenv
 cryptography
+openpyxl
 
 # Development and quality tooling
 pytest

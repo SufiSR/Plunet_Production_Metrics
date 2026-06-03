@@ -14,6 +14,8 @@ def _fake_load_runtime_config(*_args, **_kwargs) -> RuntimeConfig:
         gitlab_token="test-gitlab-token",
         jira_token="test-jira-token",
         jira_user_email="",
+        hrworks_access_key="",
+        hrworks_secret_access_key="",
     )
 
 
@@ -27,6 +29,24 @@ def test_build_scheduler_registers_nightly_job_with_configured_cron() -> None:
     job = scheduler.get_job("nightly_sync")
     assert job is not None
     assert str(job.trigger) == "cron[hour='3', minute='45']"
+
+
+def test_build_scheduler_registers_hrworks_weekly_job() -> None:
+    config = ConfigurationSchema.model_validate(
+        {
+            "hrworks": {
+                "sync_cron_day_of_week": "sun",
+                "sync_cron_hour": 4,
+                "sync_cron_minute": 15,
+            },
+        }
+    )
+    scheduler = build_scheduler(config)
+    job = scheduler.get_job("hrworks_weekly_sync")
+    assert job is not None
+    assert "day_of_week='sun'" in str(job.trigger)
+    assert "hour='4'" in str(job.trigger)
+    assert "minute='15'" in str(job.trigger)
 
 
 def test_run_nightly_sync_executes_required_order_when_both_collectors_succeed(monkeypatch) -> None:

@@ -72,7 +72,6 @@ def test_build_admin_config_response(monkeypatch: pytest.MonkeyPatch) -> None:
     assert resp.gitlab_url == "https://db-gl.example"
     assert resp.jira_username == "db@user.test"
     assert resp.jira_worklog_user_assignments == []
-    assert resp.jira_worklog_author_denylist == []
     assert resp.gitlab_project_paths == ["a/b"]
     assert resp.exclude_release_only_mrs_from_lead_time is True
     assert " release" in resp.release_mr_title_markers
@@ -84,7 +83,7 @@ def test_patch_admin_configuration_updates_settings(
 ) -> None:
     monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
     monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.setattr(acs, "reschedule_all_schedulers", lambda _cfg: None)
     monkeypatch.delenv("GITLAB_BASE_URL", raising=False)
     with _session() as db:
         db.add(AppConfiguration(id=1, settings_json={}))
@@ -115,12 +114,12 @@ def test_patch_admin_configuration_updates_settings(
         ]
 
 
-def test_patch_admin_configuration_stores_worklog_assignments(
+def test_patch_admin_configuration_ignores_legacy_worklog_assignments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
     monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.setattr(acs, "reschedule_all_schedulers", lambda _cfg: None)
     monkeypatch.delenv("GITLAB_BASE_URL", raising=False)
     with _session() as db:
         db.add(AppConfiguration(id=1, settings_json={}))
@@ -131,15 +130,11 @@ def test_patch_admin_configuration_stores_worklog_assignments(
                 jira_worklog_user_assignments=[
                     {"jira_account_id": "acc-1", "role": "dev", "team": "Core"},
                 ],
-                jira_worklog_author_denylist=["bot-acc"],
             ),
         )
         row = db.get(AppConfiguration, 1)
         assert row is not None
-        assert row.settings_json["jira"]["jira_worklog_user_assignments"] == [
-            {"jira_account_id": "acc-1", "role": "dev", "team": "Core"},
-        ]
-        assert row.settings_json["jira"]["jira_worklog_author_denylist"] == ["bot-acc"]
+        assert "jira_worklog_user_assignments" not in row.settings_json.get("jira", {})
 
 
 def test_admin_config_patch_rejects_duplicate_assignment_account_ids() -> None:
@@ -152,60 +147,12 @@ def test_admin_config_patch_rejects_duplicate_assignment_account_ids() -> None:
         )
 
 
-def test_patch_admin_configuration_stores_role_only_assignment_without_team(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
-    monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
-    with _session() as db:
-        db.add(AppConfiguration(id=1, settings_json={}))
-        db.commit()
-        acs.patch_admin_configuration(
-            db,
-            AdminConfigPatch(
-                jira_worklog_user_assignments=[
-                    {"author": "Legacy User", "role": "qa", "team": ""},
-                ],
-            ),
-        )
-        row = db.get(AppConfiguration, 1)
-        assert row is not None
-        assert row.settings_json["jira"]["jira_worklog_user_assignments"] == [
-            {"author": "Legacy User", "role": "qa", "team": ""},
-        ]
-
-
-def test_patch_admin_configuration_stores_sup_role_assignment(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
-    monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
-    with _session() as db:
-        db.add(AppConfiguration(id=1, settings_json={}))
-        db.commit()
-        acs.patch_admin_configuration(
-            db,
-            AdminConfigPatch(
-                jira_worklog_user_assignments=[
-                    {"jira_account_id": "sup-1", "role": "sup", "team": "Support"},
-                ],
-            ),
-        )
-        row = db.get(AppConfiguration, 1)
-        assert row is not None
-        assert row.settings_json["jira"]["jira_worklog_user_assignments"] == [
-            {"jira_account_id": "sup-1", "role": "sup", "team": "Support"},
-        ]
-
-
 def test_patch_admin_configuration_encrypts_tokens(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
     monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.setattr(acs, "reschedule_all_schedulers", lambda _cfg: None)
     with _session() as db:
         db.add(AppConfiguration(id=1, settings_json={}))
         db.commit()
@@ -226,7 +173,7 @@ def test_patch_admin_configuration_ignores_blank_secrets(
 ) -> None:
     monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
     monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.setattr(acs, "reschedule_all_schedulers", lambda _cfg: None)
     with _session() as db:
         db.add(AppConfiguration(id=1, settings_json={}))
         db.commit()
@@ -245,7 +192,7 @@ def test_patch_admin_configuration_replaces_non_dict_settings_json(
 ) -> None:
     monkeypatch.setenv("CONFIG_ENCRYPTION_KEY", "devops-438-key")
     monkeypatch.setattr(config_service, "_load_yaml_config", lambda: {})
-    monkeypatch.setattr(acs, "reschedule_nightly_sync", lambda _cfg: None)
+    monkeypatch.setattr(acs, "reschedule_all_schedulers", lambda _cfg: None)
     with _session() as db:
         db.add(AppConfiguration(id=1, settings_json=[]))  # type: ignore[arg-type]
         db.commit()

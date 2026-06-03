@@ -64,7 +64,7 @@ export function MetricCard({
   return (
     <button
       onClick={() => openMetricModal(metricKey)}
-      className="w-full text-left bg-surface-container-lowest p-6 flex flex-col justify-between rounded-xl transition-all duration-300 hover:bg-surface-container dark:shadow-[0px_4px_24px_0px_rgba(0,0,0,0.4)] shadow-[40px_40px_40px_0px_rgba(25,28,29,0.04)] group focus-visible:outline-2 focus-visible:outline-primary"
+      className="w-full text-left bg-surface-container-lowest p-6 flex flex-col justify-between rounded-xl border border-transparent transition-all duration-300 hover:bg-surface-container shadow-[40px_40px_40px_0px_rgba(25,28,29,0.04)] group focus-visible:outline-2 focus-visible:outline-primary dark:border-outline-variant/45 dark:shadow-[0_1px_0_color-mix(in_srgb,var(--color-outline-variant)_20%,transparent),0_8px_24px_rgba(0,0,0,0.2)] dark:hover:bg-surface-container-high"
       aria-label={`${label}: ${main}${suffix}. Open details.`}
     >
       {/* Top row: badge + icon */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "next-themes";
 import {
   AreaChart,
@@ -17,7 +17,8 @@ import {
 } from "recharts";
 import { useMetricsHistory } from "@/lib/hooks";
 import { useUIStore, type TrendOverviewMetric } from "@/lib/store";
-import { getChartColors } from "@/lib/chart-colors";
+import { useChartColors, useChartSeriesColors } from "@/lib/chart-colors";
+import { comparePeriodValuesDesc } from "@/lib/jira-analytics-sort";
 import type { LeadTimeBreakdown, MetricDataPoint } from "@/types/api";
 
 const METRIC_OPTIONS: { key: TrendOverviewMetric; label: string }[] = [
@@ -27,15 +28,12 @@ const METRIC_OPTIONS: { key: TrendOverviewMetric; label: string }[] = [
   { key: "mttr_alpha",              label: "MTTR Alpha" },
 ];
 
-const BREAKDOWN_LINE_COLORS = [
-  "#4648d4", "#0d9488", "#c2410c", "#7c3aed", "#b45309", "#0e7490", "#4f46e5", "#6b21a8",
-];
-
 interface ChartColors {
   primary: string;
   leadDev: string;
   leadWait: string;
   grid: string;
+  gridOpacity: number;
   axisLabel: string;
   tooltipBg: string;
   tooltipText: string;
@@ -210,35 +208,38 @@ const METRIC_FOOTNOTES: Record<TrendOverviewMetric, string> = {
     "Median minutes from bug creation to first customer release containing the fix (Critical/Blocker scope per config).",
 };
 
-export function TrendChart() {
+interface TrendChartProps {
+  /** When set, locks the chart to one metric and hides the metric switcher. */
+  fixedMetric?: TrendOverviewMetric;
+  headingTitle?: string;
+  /** Tighter padding and header for analytics embeds. */
+  compact?: boolean;
+}
+
+export function TrendChart({
+  fixedMetric,
+  headingTitle = "Trend Overview",
+  compact = false,
+}: TrendChartProps = {}) {
   const period = useUIStore((s) => s.period);
-  const activeMetric = useUIStore((s) => s.trendOverviewMetric);
+  const storeMetric = useUIStore((s) => s.trendOverviewMetric);
   const setTrendOverviewMetric = useUIStore((s) => s.setTrendOverviewMetric);
+  const activeMetric = fixedMetric ?? storeMetric;
+  const showMetricSwitcher = fixedMetric === undefined;
   const leadTimeBreakdown = useUIStore((s) => s.leadTimeBreakdown);
   const setLeadTimeBreakdown = useUIStore((s) => s.setLeadTimeBreakdown);
   const { data, isLoading } = useMetricsHistory();
-  const { resolvedTheme } = useTheme();
-  const [colors, setColors] = useState<ChartColors>({
-    primary:     "#4648d4",
-    leadDev:     "#4648d4",
-    leadWait:    "#7c7ef0",
-    grid:        "#edeeef",
-    axisLabel:   "#464554",
-    tooltipBg:   "#2e3132",
-    tooltipText: "#f0f1f2",
-  });
-
-  useEffect(() => {
-    const nextColors = getChartColors();
-    setColors({
-      ...nextColors,
-      leadDev: nextColors.primary,
-      leadWait: "#8b8df0",
-    });
-  }, [resolvedTheme]);
+  useTheme();
+  const baseColors = useChartColors();
+  const seriesColors = useChartSeriesColors();
+  const colors: ChartColors = {
+    ...baseColors,
+    leadDev: baseColors.primary,
+    leadWait: seriesColors[4] ?? "#8b8df0",
+  };
 
   const points: MetricDataPoint[] = useMemo(
-    () => data?.data_points ?? [],
+    () => [...(data?.data_points ?? [])].sort((a, b) => comparePeriodValuesDesc(a.date, b.date)),
     [data?.data_points],
   );
   const unit = METRIC_UNITS[activeMetric];
@@ -278,11 +279,21 @@ export function TrendChart() {
     lineSpecs.length > 0;
 
   return (
-    <div className="bg-surface-container-lowest p-8 rounded-xl shadow-[40px_40px_40px_0px_rgba(25,28,29,0.04)] dark:shadow-[0px_4px_24px_0px_rgba(0,0,0,0.4)]">
-      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
+    <div
+      className={
+        compact
+          ? "analytics-chart-plot rounded-xl p-4 md:p-5"
+          : "analytics-chart-plot rounded-xl p-8 shadow-[40px_40px_40px_0px_rgba(25,28,29,0.04)] dark:shadow-[0_1px_0_color-mix(in_srgb,var(--color-outline-variant)_20%,transparent),0_8px_24px_rgba(0,0,0,0.2)]"
+      }
+    >
+      <div className={`flex items-start justify-between gap-4 flex-wrap ${compact ? "mb-4" : "mb-8"}`}>
         <div>
-          <h2 className="text-2xl font-editorial font-bold tracking-tight text-on-surface">
-            Trend Overview
+          <h2
+            className={`font-editorial font-bold tracking-tight text-on-surface ${
+              compact ? "text-lg" : "text-2xl"
+            }`}
+          >
+            {headingTitle}
           </h2>
           <p className="text-xs font-editorial text-on-surface-variant uppercase tracking-widest mt-1">
             {period === "30d"
@@ -298,22 +309,24 @@ export function TrendChart() {
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-1 bg-surface-container rounded-lg p-1 flex-wrap">
-            {METRIC_OPTIONS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setTrendOverviewMetric(key)}
-                className={[
-                  "px-3 py-1 text-[10px] font-editorial font-bold rounded-md transition-all duration-150 uppercase tracking-wider",
-                  activeMetric === key
-                    ? "bg-surface-container-lowest text-primary shadow-sm"
-                    : "text-on-surface-variant hover:text-on-surface",
-                ].join(" ")}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {showMetricSwitcher ? (
+            <div className="flex items-center gap-1 bg-surface-container rounded-lg p-1 flex-wrap">
+              {METRIC_OPTIONS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setTrendOverviewMetric(key)}
+                  className={[
+                    "px-3 py-1 text-[10px] font-editorial font-bold rounded-md transition-all duration-150 uppercase tracking-wider",
+                    activeMetric === key
+                      ? "bg-surface-container-lowest text-primary shadow-sm"
+                      : "text-on-surface-variant hover:text-on-surface",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {activeMetric === "lead_time_for_changes" && (
             <div className="flex items-center gap-1 bg-surface-container-high rounded-lg p-1 flex-wrap">
               {(
@@ -341,7 +354,7 @@ export function TrendChart() {
         </div>
       </div>
 
-      <div className="h-[300px] w-full">
+      <div className={`w-full ${compact ? "h-[240px]" : "h-[300px]"}`}>
         {isLoading ? (
           <div className="h-full w-full bg-surface-container animate-pulse rounded-lg" />
         ) : points.length === 0 ? (
@@ -354,6 +367,7 @@ export function TrendChart() {
               <CartesianGrid
                 strokeDasharray="0"
                 stroke={colors.grid}
+                strokeOpacity={colors.gridOpacity}
                 vertical={false}
               />
               <XAxis
@@ -390,7 +404,7 @@ export function TrendChart() {
                   type="monotone"
                   dataKey={s.dataKey}
                   name={s.name}
-                  stroke={BREAKDOWN_LINE_COLORS[i % BREAKDOWN_LINE_COLORS.length]}
+                  stroke={seriesColors[i % seriesColors.length]}
                   strokeWidth={2}
                   dot={{ r: 2.5, strokeWidth: 0 }}
                   activeDot={{ r: 5, strokeWidth: 0 }}
@@ -411,6 +425,7 @@ export function TrendChart() {
               <CartesianGrid
                 strokeDasharray="0"
                 stroke={colors.grid}
+                strokeOpacity={colors.gridOpacity}
                 vertical={false}
               />
               <XAxis

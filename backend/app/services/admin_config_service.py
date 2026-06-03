@@ -6,13 +6,10 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.app_configuration import AppConfiguration
-from app.scheduler import reschedule_nightly_sync
+from app.scheduler import reschedule_all_schedulers
 from app.schemas.admin_config import AdminConfigPatch, AdminConfigResponse
 from app.services import config_service
-from app.services.jira_worklog_settings import (
-    read_worklog_assignments_from_settings,
-    read_worklog_denylist_from_settings,
-)
+from app.services.jira_user_assignments import list_worklog_assignments
 
 
 def _env_text(name: str) -> str | None:
@@ -67,9 +64,14 @@ def build_admin_config_response(db: Session) -> AdminConfigResponse:
         sync_cron_hour=cfg.backend.sync_cron_hour,
         sync_cron_minute=cfg.backend.sync_cron_minute,
         lookback_days=cfg.backend.lookback_days,
+        hrworks_sync_cron_day_of_week=cfg.hrworks.sync_cron_day_of_week,
+        hrworks_sync_cron_hour=cfg.hrworks.sync_cron_hour,
+        hrworks_sync_cron_minute=cfg.hrworks.sync_cron_minute,
+        jira_analytics_sync_cron_hour=cfg.jira_analytics.sync_cron_hour,
+        jira_analytics_sync_cron_minute=cfg.jira_analytics.sync_cron_minute,
+        jira_analytics_scheduled_lookback_days=cfg.jira_analytics.scheduled_lookback_days,
         notifications_webhook_url=cfg.notifications.webhook_url,
-        jira_worklog_user_assignments=read_worklog_assignments_from_settings(settings_json),
-        jira_worklog_author_denylist=read_worklog_denylist_from_settings(settings_json),
+        jira_worklog_user_assignments=list_worklog_assignments(db),
     )
 
 
@@ -106,6 +108,8 @@ def patch_admin_configuration(db: Session, patch: AdminConfigPatch) -> AdminConf
     gl = _nested_dict(settings_json, "gitlab")
     jr = _nested_dict(settings_json, "jira")
     bk = _nested_dict(settings_json, "backend")
+    hw = _nested_dict(settings_json, "hrworks")
+    ja = _nested_dict(settings_json, "jira_analytics")
     nt = _nested_dict(settings_json, "notifications")
 
     if "environment" in data and data["environment"] is not None:
@@ -143,32 +147,38 @@ def patch_admin_configuration(db: Session, patch: AdminConfigPatch) -> AdminConf
     if "mttr_alpha_priorities" in data:
         jr["mttr_alpha_priorities"] = data.pop("mttr_alpha_priorities")
     if "jira_worklog_user_assignments" in data:
-        assign = data.pop("jira_worklog_user_assignments")
-        if assign is not None:
-            jr["jira_worklog_user_assignments"] = [
-                a.model_dump() if hasattr(a, "model_dump") else dict(a) for a in assign
-            ]
-    if "jira_worklog_author_denylist" in data:
-        deny = data.pop("jira_worklog_author_denylist")
-        if deny is not None:
-            jr["jira_worklog_author_denylist"] = list(deny)
+        data.pop("jira_worklog_user_assignments")
     if "sync_cron_hour" in data:
         bk["sync_cron_hour"] = data.pop("sync_cron_hour")
     if "sync_cron_minute" in data:
         bk["sync_cron_minute"] = data.pop("sync_cron_minute")
     if "lookback_days" in data:
         bk["lookback_days"] = data.pop("lookback_days")
+    if "hrworks_sync_cron_day_of_week" in data and data["hrworks_sync_cron_day_of_week"] is not None:
+        hw["sync_cron_day_of_week"] = data.pop("hrworks_sync_cron_day_of_week").strip().lower()
+    if "hrworks_sync_cron_hour" in data:
+        hw["sync_cron_hour"] = data.pop("hrworks_sync_cron_hour")
+    if "hrworks_sync_cron_minute" in data:
+        hw["sync_cron_minute"] = data.pop("hrworks_sync_cron_minute")
+    if "jira_analytics_sync_cron_hour" in data:
+        ja["sync_cron_hour"] = data.pop("jira_analytics_sync_cron_hour")
+    if "jira_analytics_sync_cron_minute" in data:
+        ja["sync_cron_minute"] = data.pop("jira_analytics_sync_cron_minute")
+    if "jira_analytics_scheduled_lookback_days" in data:
+        ja["scheduled_lookback_days"] = data.pop("jira_analytics_scheduled_lookback_days")
     if "notifications_webhook_url" in data:
         nt["webhook_url"] = data.pop("notifications_webhook_url")
 
     settings_json["gitlab"] = gl
     settings_json["jira"] = jr
     settings_json["backend"] = bk
+    settings_json["hrworks"] = hw
+    settings_json["jira_analytics"] = ja
     settings_json["notifications"] = nt
 
     row.settings_json = settings_json
     db.commit()
 
     runtime = config_service.load_runtime_config(db=db)
-    reschedule_nightly_sync(runtime.settings)
+    reschedule_all_schedulers(runtime.settings)
     return build_admin_config_response(db)

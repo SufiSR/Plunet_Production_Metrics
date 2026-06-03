@@ -24,19 +24,129 @@ export interface JiraWorklogUserAssignment {
   team: string;
 }
 
-export interface WorklogAuthorListItem {
-  jira_account_id: string | null;
-  author: string | null;
+export interface JiraUserRoleAssignmentView {
+  role_name: string | null;
+  team_name: string | null;
+  allocatable_percentage: number | null;
+  allocation_scope: string | null;
+  valid_from: string | null;
 }
 
-export interface WorklogAuthorListResponse {
-  items: WorklogAuthorListItem[];
+export interface JiraUserAdminItem {
+  id: number;
+  account_id: string;
+  display_name: string | null;
+  email_address: string | null;
+  jira_active: boolean | null;
+  reporting_excluded: boolean;
+  role_assignment: JiraUserRoleAssignmentView | null;
+}
+
+export interface JiraUserAdminListResponse {
+  items: JiraUserAdminItem[];
   page: number;
   size: number;
   total_elements: number;
   total_pages: number;
   has_next: boolean;
   has_previous: boolean;
+}
+
+export interface AllocationRoleRuleItem {
+  role_name: string;
+  is_direct_production_role: boolean;
+  is_indirect_role: boolean;
+  overhead_percentage: number;
+  allocation_scope: string;
+  default_allocatable_percentage: number;
+}
+
+export interface AllocationRoleRulesResponse {
+  items: AllocationRoleRuleItem[];
+}
+
+export interface JiraUserPatch {
+  reporting_excluded?: boolean;
+}
+
+export interface JiraUserRoleAssignmentPut {
+  role_name: string;
+  team_name?: string;
+  allocatable_percentage?: number | null;
+  allocation_scope?: string | null;
+}
+
+export interface FeatureFamilyFeatureItem {
+  feature_root_id: number;
+  root_key: string;
+  name: string;
+  start_date: string | null;
+  target_end_date: string | null;
+  delivery_progress: string | null;
+  team_name: string | null;
+  total_hours: number;
+  assigned_family_id: number | null;
+  assigned_family_name: string | null;
+}
+
+export interface FeatureFamilyAdminItem {
+  id: number;
+  name: string;
+  description: string | null;
+  suggestion_keywords: string[];
+  title_match_pattern: string | null;
+  active: boolean;
+  member_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface FeatureFamilyListResponse {
+  items: FeatureFamilyAdminItem[];
+}
+
+export interface FeatureFamilyDetailResponse {
+  family: FeatureFamilyAdminItem;
+  members: FeatureFamilyFeatureItem[];
+}
+
+export interface FeatureFamilyCreate {
+  name: string;
+  description?: string | null;
+  suggestion_keywords?: string[];
+  title_match_pattern?: string | null;
+}
+
+export interface FeatureFamilyPatch {
+  name?: string;
+  description?: string | null;
+  suggestion_keywords?: string[];
+  title_match_pattern?: string | null;
+  active?: boolean;
+}
+
+export interface FeatureFamilyMembersPut {
+  feature_root_ids: number[];
+}
+
+export interface FeatureFamilyFeatureListResponse {
+  items: FeatureFamilyFeatureItem[];
+}
+
+export interface FeatureFamilySuggestionItem {
+  suggestion_id: string;
+  family_id: number;
+  family_name: string;
+  feature_root_id: number;
+  root_key: string;
+  feature_name: string;
+  confidence: number;
+  reason: string;
+  matched_tokens: string[];
+}
+
+export interface FeatureFamilySuggestionsResponse {
+  items: FeatureFamilySuggestionItem[];
 }
 
 export interface AdminConfigResponse {
@@ -60,9 +170,14 @@ export interface AdminConfigResponse {
   sync_cron_hour: number;
   sync_cron_minute: number;
   lookback_days: number;
+  hrworks_sync_cron_day_of_week: string;
+  hrworks_sync_cron_hour: number;
+  hrworks_sync_cron_minute: number;
+  jira_analytics_sync_cron_hour: number;
+  jira_analytics_sync_cron_minute: number;
+  jira_analytics_scheduled_lookback_days: number;
   notifications_webhook_url: string | null;
   jira_worklog_user_assignments: JiraWorklogUserAssignment[];
-  jira_worklog_author_denylist: string[];
 }
 
 export interface AdminConfigPatch {
@@ -86,9 +201,14 @@ export interface AdminConfigPatch {
   sync_cron_hour?: number;
   sync_cron_minute?: number;
   lookback_days?: number;
+  hrworks_sync_cron_day_of_week?: string;
+  hrworks_sync_cron_hour?: number;
+  hrworks_sync_cron_minute?: number;
+  jira_analytics_sync_cron_hour?: number;
+  jira_analytics_sync_cron_minute?: number;
+  jira_analytics_scheduled_lookback_days?: number;
   notifications_webhook_url?: string | null;
   jira_worklog_user_assignments?: JiraWorklogUserAssignment[];
-  jira_worklog_author_denylist?: string[];
 }
 
 export interface WebhookTestRequest {

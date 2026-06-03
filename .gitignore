@@ -40,6 +40,16 @@ terminals/
 
 # Logs
 *.log
+# DB Backups
+*.tgz
+
+# plans
+new_plan.md
+plan.md
+
+jira_analytics_requirement/
+jira_analytics_requirements/
+images/
 
 # Documentation_old
 docs/

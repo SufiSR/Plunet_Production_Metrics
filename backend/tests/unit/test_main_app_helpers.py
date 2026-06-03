@@ -29,6 +29,8 @@ def app_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
             gitlab_token="",
             jira_token="",
             jira_user_email="",
+            hrworks_access_key="",
+            hrworks_secret_access_key="",
         )
 
     monkeypatch.setattr(main_mod, "load_runtime_config", _load_runtime)

@@ -143,6 +143,18 @@ def test_data_health_response_contains_required_sections(data_health_client: Tes
                 fix_versions=[],
             )
         )
+        db.add(
+            ProductionBug(
+                id=3,
+                jira_key="DEVOPS-12",
+                summary="Ignored bug",
+                healthy=False,
+                healthmemo="ignored",
+                jira_created_at_valid=True,
+                affects_versions=["11.0.0"],
+                fix_versions=[],
+            )
+        )
         db.commit()
 
     login = data_health_client.post(
@@ -158,13 +170,14 @@ def test_data_health_response_contains_required_sections(data_health_client: Tes
     assert response.status_code == 200
     body = response.json()
 
-    assert body["summary"]["total_bugs"] == 2
-    assert body["summary"]["healthy_bugs"] == 1
-    assert body["summary"]["healthy_bugs_pct"] == 50.0
+    assert body["summary"]["total_bugs"] == 3
+    assert body["summary"]["healthy_bugs"] == 2
+    assert body["summary"]["healthy_bugs_pct"] == 66.67
     assert body["summary"]["unmatched_mr_count"] == 2
     assert body["summary"]["version_mismatch_count"] == 2
 
-    assert len(body["jira_health_breakdown"]) == 2
+    ignored_breakdown = next(row for row in body["jira_health_breakdown"] if row["healthmemo"] == "ignored")
+    assert ignored_breakdown["healthy"] is True
     assert body["unmatched_merge_requests_pagination"]["total_elements"] == 2
     assert len(body["unmatched_merge_requests"]) == 2
     assert body["unmatched_merge_requests"][0]["gitlab_merge_request_url"]

@@ -146,6 +146,12 @@ def _labels_contain_test(labels: list[str] | None) -> bool:
     return any("test" in str(label).lower() for label in labels if str(label).strip())
 
 
+def _labels_contain_ignored(labels: list[str] | None) -> bool:
+    if not labels:
+        return False
+    return any(str(label).strip().lower() == "ignored" for label in labels)
+
+
 def evaluate_issue_health(
     *,
     issue_type: str,
@@ -165,6 +171,13 @@ def evaluate_issue_health(
         return HealthResult(
             True,
             "pre-production - label contains test",
+            parent_affects_versions,
+            parent_fix_versions,
+        )
+    if _labels_contain_ignored(labels):
+        return HealthResult(
+            True,
+            "ignored",
             parent_affects_versions,
             parent_fix_versions,
         )

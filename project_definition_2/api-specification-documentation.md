@@ -51,20 +51,23 @@ Phase 1 may map `**mttr`** in the public API to **MTTR Alpha** (minutes) for the
 | POST   | `/auth/logout`  | Invalidate session / clear cookie                                                                         |
 | GET    | `/auth/me`      | Current principal (`role`: `viewer` is unauthenticated default when not used; `admin` when session valid) |
 | GET    | `/admin/config` | Full effective config for forms; **secrets masked**                                                       |
-| PATCH  | `/admin/config` | Partial update of GitLab/Jira/scheduler settings; new tokens replace stored secrets; optionally `jira_worklog_user_assignments` and `jira_worklog_author_denylist` (see below)                       |
-| GET    | `/admin/jira/worklog-authors` | Distinct worklog authors from `issue_worklog` excluding denylisted Jira account IDs (paginated)          |
+| PATCH  | `/admin/config` | Partial update of GitLab/Jira/scheduler settings; new tokens replace stored secrets. User role assignments are **not** written here anymore. |
+| GET    | `/admin/jira-users` | Paginated `jira_user` list with current `jira_user_role_assignment` and `reporting_excluded` |
+| PATCH  | `/admin/jira-users/{id}` | Set `reporting_excluded` (admin-only; omitted from allocation and analytics) |
+| PUT    | `/admin/jira-users/{id}/role-assignment` | Upsert current role/team and optional allocation overrides (`allocatable_percentage`, `allocation_scope`) |
+| GET    | `/admin/jira-users/allocation-role-rules` | Active `allocation_role_rule` rows for admin UI dropdowns |
 
 
 **Rules:** `GET/PATCH /admin/config` and `POST /auth/logout` require a valid **Admin** session. Unauthenticated requests receive **401 Unauthorized**. Viewers never call these routes from the main dashboard.
 
-### Jira worklog assignment settings (persisted in `AppConfiguration.settings_json`)
+### Jira user assignments (relational source of truth)
 
-These keys live under **`jira`** in `settings_json` (not necessarily mirrored in YAML env defaults):
+User roles and teams for DORA swimlanes and Jira analytics allocation are stored in:
 
-| Key | Shape | Purpose |
-| --- | ----- | ------- |
-| `jira_worklog_user_assignments` | Array of `{ "jira_account_id": string, "role": "pm" \| "dev" \| "qa", "team": string }`; **unique `jira_account_id`** per array | Maps Jira authors to department role and team for aggregations. |
-| `jira_worklog_author_denylist` | Array of Jira **`accountId`** strings (exact match) | Service/automation authors: omitted from **`GET /admin/jira/worklog-authors`** and **excluded entirely** from **`GET /metrics/releases/worklog-hours`** totals when `jira_account_id` matches. |
+- **`jira_user`** — synced from Jira analytics ingestion; **`reporting_excluded`** is admin-only and never overwritten by sync.
+- **`jira_user_role_assignment`** — historical role/team rows with optional per-user **`allocatable_percentage`** and **`allocation_scope`** overrides.
+
+Admin UI: **`/admin/user-assignments`**. After bulk changes, run the monthly allocation rebuild (nightly pipeline or manual Jira analytics sync).
 
 Semantics: aggregates include **all** worklog seconds on bugs linked via `BugRelease` to the tag (no calendar window). If one bug maps to **multiple** releases, each tag view includes **full** worklog on that bug (expected double-count **across** tags).
 

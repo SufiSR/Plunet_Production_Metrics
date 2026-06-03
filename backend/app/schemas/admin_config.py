@@ -28,9 +28,14 @@ class AdminConfigResponse(BaseModel):
     sync_cron_hour: int
     sync_cron_minute: int
     lookback_days: int
+    hrworks_sync_cron_day_of_week: str
+    hrworks_sync_cron_hour: int
+    hrworks_sync_cron_minute: int
+    jira_analytics_sync_cron_hour: int
+    jira_analytics_sync_cron_minute: int
+    jira_analytics_scheduled_lookback_days: int
     notifications_webhook_url: str | None
     jira_worklog_user_assignments: list[JiraWorklogUserAssignment] = Field(default_factory=list)
-    jira_worklog_author_denylist: list[str] = Field(default_factory=list)
 
 
 class AdminConfigPatch(BaseModel):
@@ -54,9 +59,14 @@ class AdminConfigPatch(BaseModel):
     sync_cron_hour: int | None = Field(default=None, ge=0, le=23)
     sync_cron_minute: int | None = Field(default=None, ge=0, le=59)
     lookback_days: int | None = Field(default=None, ge=1)
+    hrworks_sync_cron_day_of_week: str | None = None
+    hrworks_sync_cron_hour: int | None = Field(default=None, ge=0, le=23)
+    hrworks_sync_cron_minute: int | None = Field(default=None, ge=0, le=59)
+    jira_analytics_sync_cron_hour: int | None = Field(default=None, ge=0, le=23)
+    jira_analytics_sync_cron_minute: int | None = Field(default=None, ge=0, le=59)
+    jira_analytics_scheduled_lookback_days: int | None = Field(default=None, ge=1, le=3650)
     notifications_webhook_url: str | None = None
     jira_worklog_user_assignments: list[JiraWorklogUserAssignment] | None = None
-    jira_worklog_author_denylist: list[str] | None = None
 
     @field_validator("jira_worklog_user_assignments")
     @classmethod

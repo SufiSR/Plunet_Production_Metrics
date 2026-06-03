@@ -55,9 +55,7 @@ def test_list_distinct_worklog_authors_orders_with_distinct_outer_query() -> Non
         )
         db.commit()
 
-        rows, total = list_distinct_worklog_authors_page(
-            db, denylist=[], page=0, size=10
-        )
+        rows, total = list_distinct_worklog_authors_page(db, page=0, size=10)
         assert total == 2
         assert [(a, author) for a, author in rows] == [
             ("acc-a", "alpha"),

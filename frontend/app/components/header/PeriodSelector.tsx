@@ -12,7 +12,7 @@ export function PeriodSelector() {
   const { period, setPeriod } = useUIStore();
 
   return (
-    <div className="hidden md:flex items-center gap-1 bg-surface-container rounded-lg p-1">
+    <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-surface-container p-1">
       {PERIODS.map(({ value, label }) => {
         const isActive = period === value;
         return (
@@ -20,7 +20,7 @@ export function PeriodSelector() {
             key={value}
             onClick={() => setPeriod(value)}
             className={[
-              "px-3 py-1 text-xs font-editorial font-bold rounded-md transition-all duration-150",
+              "shrink-0 px-3 py-1 text-xs font-editorial font-bold rounded-md transition-all duration-150",
               isActive
                 ? "bg-surface-container-lowest text-primary shadow-sm"
                 : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",

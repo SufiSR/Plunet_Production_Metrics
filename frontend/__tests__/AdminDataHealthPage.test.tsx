@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import AdminDataHealthPage from "@/app/admin/data-health/page";
+import AdminDataHealthPage from "@/app/admin_legacy/data-health/page";
 
 const pushMock = jest.fn();
 const meMock = jest.fn();

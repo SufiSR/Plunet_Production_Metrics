@@ -12,6 +12,69 @@ backend:
 
 gitlab:
   base_url: https://gitlab.plunet.com
+  # Same as POC: URL path segment after host (e.g. https://gitlab.plunet.com/dev/plunet/-/tags -> dev/plunet)
+  project_paths:
+    - dev/plunet
+  target_branches:
+    - master
+    - 9.x
+    - 10.x
+    - 11.x
+  # Extra lines where merged MRs should be ingested (patch/customer branches). Duplicates vs target_branches are ignored.
+  additional_merge_target_branches: []
+  non_customer_release_markers:
+    - rc
+    - beta
+  exclude_release_only_mrs_from_lead_time: true
+  release_mr_title_markers:
+    - " release"
+  release_mr_source_branch_markers:
+    - release
+
+jira:
+  base_url: https://plunet.atlassian.net
+  excluded_projects: [DEVOPS, JIRATESTS]
+  ready_for_qa_status_names:
+    - Ready for QA
+  production_bug_indicator_cf_ids: ["10114", "10123"]
+
+jira_analytics:
+  sync_cron_hour: 4
+  sync_cron_minute: 30
+  scheduled_lookback_days: 14
+
+hrworks:
+  base_url: https://api.hrworks.de/v2
+  sync_cron_day_of_week: sun
+  sync_cron_hour: 3
+  sync_cron_minute: 0
+  backfill_start_date: "2024-01-01"
+  incremental_months_back: 3
+  incremental_forecast_months: 6
+  persons_batch_size: 1
+  roster_refresh_hours: 168
+  denied_person_ids:
+    - jirascriptapi@plunet.com
+    - sophie.halbeisen@plunet.comausgeschieden1
+    - simona.hodrea@plunet.comausgeschieden1
+    - philipp.muhl@plunet.comausgeschieden1
+
+notifications:
+  webhook_url: null
+# Non-secret bootstrap defaults for local development.
+# Secrets must be provided via environment variables or admin runtime configuration.
+
+environment: development
+backend:
+  host: 0.0.0.0
+  port: 8000
+  log_level: INFO
+  sync_cron_hour: 2
+  sync_cron_minute: 0
+  lookback_days: 730
+
+gitlab:
+  base_url: https://gitlab.plunet.com
   # Same as POC: URL path segment after host (e.g. https://gitlab.plunet.com/dev/plunet/-/tags → dev/plunet)
   project_paths:
     - dev/plunet
@@ -37,6 +100,24 @@ jira:
   ready_for_qa_status_names:
     - Ready for QA
   production_bug_indicator_cf_ids: ["10114", "10123"]
+
+jira_analytics:
+  sync_cron_hour: 4
+  sync_cron_minute: 30
+  scheduled_lookback_days: 14
+
+hrworks:
+  base_url: https://api.hrworks.de/v2
+  sync_cron_day_of_week: sun
+  sync_cron_hour: 3
+  sync_cron_minute: 0
+  backfill_start_date: "2024-01-01"
+  incremental_months_back: 3
+  incremental_forecast_months: 6
+  persons_batch_size: 1
+  roster_refresh_hours: 168
+  denied_person_ids:
+    - jirascriptapi@plunet.com
 
 notifications:
   webhook_url: null
