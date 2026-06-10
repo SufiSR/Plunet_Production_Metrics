@@ -5,11 +5,11 @@ from io import BytesIO
 from threading import Lock, Thread
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
-from app.api.deps import SessionDep, require_admin_session
+from app.api.deps import SessionDep, has_people_data_access, require_admin_session
 from app.database import SessionLocal
 from app.jira_analytics.allocation import rebuild_monthly_allocation
 from app.jira_analytics.data_quality import build_data_quality
@@ -39,6 +39,16 @@ from app.jira_analytics.feature_investment_audit_service import (
     feature_investment_audit_xlsx,
 )
 from app.jira_analytics.models import JiraWorklog, MonthlyAllocatedEffort, MonthlyTopicEffortBase
+from app.jira_analytics.people_data_redaction import (
+    redact_allocation_explain,
+    redact_availability_vs_booked,
+    redact_bus_factor,
+    redact_capacity_forecast,
+    redact_customer_effort,
+    redact_data_quality_user_drilldown,
+    redact_heatmap,
+    redact_people_worklogs,
+)
 from app.jira_analytics.project_scope import apply_worklog_issue_scope
 from app.jira_analytics.reports import reports_service as reports
 from app.jira_analytics.reports.common import parse_period
@@ -250,10 +260,15 @@ def data_quality(db: SessionDep) -> DataQualityResponse:
 )
 def data_quality_user_drilldown(
     check_id: str,
+    request: Request,
     db: SessionDep,
 ) -> DataQualityUserDrilldownResponse:
     try:
-        return build_data_quality_user_drilldown(db, check_id=check_id)
+        response = build_data_quality_user_drilldown(db, check_id=check_id)
+        return redact_data_quality_user_drilldown(
+            response,
+            allowed=has_people_data_access(request, db),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -377,21 +392,24 @@ def get_drilldown_issues(
 
 @router.get("/drilldown/people-worklogs", response_model=AnalyticsReportResponse)
 def get_drilldown_people_worklogs(
+    request: Request,
     db: SessionDep,
     period_month: Annotated[str | None, Query()] = None,
     issue_key: Annotated[str | None, Query()] = None,
     feature_key: Annotated[str | None, Query()] = None,
 ) -> AnalyticsReportResponse:
-    return drilldown_people_worklogs(
+    report = drilldown_people_worklogs(
         db,
         period_month=parse_period(period_month),
         issue_key=issue_key,
         feature_key=feature_key,
     )
+    return redact_people_worklogs(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/allocation/explain", response_model=AnalyticsReportResponse)
 def get_allocation_explain(
+    request: Request,
     db: SessionDep,
     period_month: Annotated[str, Query()],
     feature_key: Annotated[str | None, Query()] = None,
@@ -401,13 +419,14 @@ def get_allocation_explain(
     pm = parse_period(period_month)
     if pm is None:
         raise HTTPException(status_code=400, detail="period_month is required")
-    return allocation_explain(
+    report = allocation_explain(
         db,
         period_month=pm,
         feature_key=feature_key,
         issue_key=issue_key,
         person=person,
     )
+    return redact_allocation_explain(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/capacity/investment-category", response_model=AnalyticsReportResponse)
@@ -567,6 +586,7 @@ def features_investment_ranking(
 
 @router.get("/work-allocation/heatmap", response_model=AnalyticsReportResponse)
 def work_allocation_heatmap(
+    request: Request,
     db: SessionDep,
     date_from: Annotated[str | None, Query(alias="from")] = None,
     date_to: Annotated[str | None, Query(alias="to")] = None,
@@ -574,7 +594,8 @@ def work_allocation_heatmap(
     mode: Annotated[str, Query()] = "combined",
 ) -> AnalyticsReportResponse:
     f, t = _period_filters(date_from, date_to)
-    return reports.work_allocation_heatmap(db, date_from=f, date_to=t, team=team, mode=mode)
+    report = reports.work_allocation_heatmap(db, date_from=f, date_to=t, team=team, mode=mode)
+    return redact_heatmap(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/teams/planned-vs-unplanned", response_model=AnalyticsReportResponse)
@@ -590,24 +611,28 @@ def teams_planned_vs_unplanned(
 
 @router.get("/teams/availability-vs-booked", response_model=AnalyticsReportResponse)
 def teams_availability_vs_booked(
+    request: Request,
     db: SessionDep,
     date_from: Annotated[str | None, Query(alias="from")] = None,
     date_to: Annotated[str | None, Query(alias="to")] = None,
     team: Annotated[str | None, Query()] = None,
 ) -> AnalyticsReportResponse:
     f, t = _period_filters(date_from, date_to)
-    return reports.availability_vs_booked(db, date_from=f, date_to=t, team=team)
+    report = reports.availability_vs_booked(db, date_from=f, date_to=t, team=team)
+    return redact_availability_vs_booked(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/teams/capacity-forecast", response_model=AnalyticsReportResponse)
 def teams_capacity_forecast(
+    request: Request,
     db: SessionDep,
     date_from: Annotated[str | None, Query(alias="from")] = None,
     date_to: Annotated[str | None, Query(alias="to")] = None,
     team: Annotated[str | None, Query()] = None,
 ) -> AnalyticsReportResponse:
     f, t = _period_filters(date_from, date_to)
-    return reports.capacity_forecast(db, date_from=f, date_to=t, team=team)
+    report = reports.capacity_forecast(db, date_from=f, date_to=t, team=team)
+    return redact_capacity_forecast(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/teams/real-interruption-ratio", response_model=AnalyticsReportResponse)
@@ -728,24 +753,28 @@ def teams_throughput(
 
 @router.get("/risks/single-contributor", response_model=AnalyticsReportResponse)
 def risks_bus_factor(
+    request: Request,
     db: SessionDep,
     date_from: Annotated[str | None, Query(alias="from")] = None,
     date_to: Annotated[str | None, Query(alias="to")] = None,
     team: Annotated[str | None, Query()] = None,
 ) -> AnalyticsReportResponse:
     f, t = _period_filters(date_from, date_to)
-    return reports.bus_factor(db, date_from=f, date_to=t, team=team)
+    report = reports.bus_factor(db, date_from=f, date_to=t, team=team)
+    return redact_bus_factor(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/customers/effort", response_model=AnalyticsReportResponse)
 def customers_effort(
+    request: Request,
     db: SessionDep,
     date_from: Annotated[str | None, Query(alias="from")] = None,
     date_to: Annotated[str | None, Query(alias="to")] = None,
     customer: Annotated[str | None, Query()] = None,
 ) -> AnalyticsReportResponse:
     f, t = _period_filters(date_from, date_to)
-    return reports.customer_effort(db, date_from=f, date_to=t, customer=customer)
+    report = reports.customer_effort(db, date_from=f, date_to=t, customer=customer)
+    return redact_customer_effort(report, allowed=has_people_data_access(request, db))
 
 
 @router.get("/product/investment-by-theme", response_model=AnalyticsReportResponse)

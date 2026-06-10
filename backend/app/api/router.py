@@ -6,10 +6,11 @@ from fastapi.responses import JSONResponse
 from app.api import (
     admin_config,
     admin_data_health,
-    admin_jira_feature_families,
     admin_hrworks,
     admin_jira_analytics,
+    admin_jira_feature_families,
     admin_jira_users,
+    admin_people_data_users,
     admin_raw_tables,
     auth,
     jira_analytics_reports,
@@ -27,6 +28,7 @@ api_router.include_router(admin_config.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_data_health.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_raw_tables.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_jira_users.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_people_data_users.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_jira_feature_families.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_jira_analytics.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_hrworks.router, prefix="/admin", tags=["admin"])

@@ -161,6 +161,7 @@ class DataQualityUserDrilldownResponse(BaseModel):
     active_count: int = Field(ge=0)
     ignored_count: int = Field(ge=0)
     users: list[DataQualityUserDrilldownRow]
+    people_data_restricted: bool = False
 
 
 class DataQualityUserIgnoreRequest(BaseModel):

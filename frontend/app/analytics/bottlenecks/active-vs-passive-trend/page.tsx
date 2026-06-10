@@ -30,6 +30,12 @@ import { fetchAnalyticsReport, reportPaths } from "@/lib/jira-analytics-api";
 import { useReportChartTheme } from "@/lib/chart-colors";
 import { comparePeriodValuesAsc } from "@/lib/jira-analytics-sort";
 import {
+  ELAPSED_TIME_NOTE,
+  formatElapsedDays,
+  formatElapsedDaysDelta,
+  hoursToElapsedDays,
+} from "@/lib/elapsed-time-format";
+import {
   MAIN_DELIVERY_WORKFLOWS,
   MAIN_DELIVERY_WORKFLOW_LABELS,
 } from "@/lib/jira-analytics-workflows";
@@ -151,14 +157,14 @@ export default function Page() {
   return (
     <JiraAnalyticsShell
       title="Active vs passive trend"
-      description="Quarterly trend for active work compared with queue and waiting time."
+      description="Quarterly trend for active work compared with queue and waiting elapsed time."
       hidePageHeader
       hideMethodology
     >
       <BottleneckReportLayout
         activeReport="active-vs-passive-trend"
         title="See whether workflow waiting is improving or degrading."
-        description="A quarterly trend view that attributes active and passive workflow time to the quarter where it actually happened, not just to when the issue was created."
+        description={`A quarterly trend view that attributes active and passive workflow elapsed time to the quarter where it actually happened, not just to when the issue was created. ${ELAPSED_TIME_NOTE}`}
         mainWorkflowLineage={MAIN_DELIVERY_WORKFLOWS.map((workflow) => ({
           label: workflow.label,
           purpose: workflow.purpose,
@@ -238,7 +244,7 @@ export default function Page() {
             </div>
           </AnalyticsFilterPanel>
         }
-        readingTip="Read the line first: down means passive share improved, up means more time is waiting. Then use the table to find which team and workflow drove the quarterly movement."
+        readingTip="Read the line first: down means passive share improved, up means more elapsed time is waiting. Then use the table to find which team and workflow drove the quarterly movement."
       >
         <ReportPageFrame
           loading={loading}
@@ -255,8 +261,8 @@ export default function Page() {
           <div className="space-y-6">
             <ModernReportCard
               eyebrow="Quarterly trend"
-              title="Active work vs passive time"
-              description="Bars show active and passive hours by quarter. The line shows passive share, so improvement or degradation is visible even when volume changes."
+              title="Active work vs passive elapsed time"
+              description={`Bars show active and passive elapsed calendar days by quarter. The line shows passive share, so improvement or degradation is visible even when volume changes. ${ELAPSED_TIME_NOTE}`}
             >
               <TrendChart rows={series} />
             </ModernReportCard>
@@ -264,7 +270,7 @@ export default function Page() {
             <ModernReportCard
               eyebrow="Quarter evidence"
               title="Team and workflow deltas"
-              description="Quarterly rows with passive share and delta against the previous quarter for the same team and workflow."
+              description="Quarterly rows with passive share and elapsed-day delta against the previous quarter for the same team and workflow."
             >
               <TrendTable rows={sortedRows} />
             </ModernReportCard>
@@ -285,7 +291,7 @@ function TrendMetrics({ data, series }: { data: AnalyticsReportResponse | null; 
     <>
       <BottleneckMetricCard label="Latest passive share" value={formatPercent(latestShare)} detail={String(data?.summary?.latest_quarter ?? "Latest quarter")} />
       <BottleneckMetricCard label="Vs previous quarter" value={formatDeltaPercent(delta)} detail={delta === null ? "Needs two populated quarters" : delta <= 0 ? "Improved or stable" : "Degraded"} />
-      <BottleneckMetricCard label="Worst queue" value={worstQueue?.label ?? "Loading"} detail={worstQueue ? `${formatHours(worstQueue.hours)} h latest quarter` : "Latest quarter queue driver"} />
+      <BottleneckMetricCard label="Worst queue" value={worstQueue?.label ?? "Loading"} detail={worstQueue ? `${formatElapsedDays(worstQueue.hours)} latest quarter` : "Latest quarter queue driver"} />
     </>
   );
 }
@@ -299,6 +305,8 @@ function TrendChart({ rows }: { rows: TrendSeriesRow[] }) {
 
   const chartRows = rows.map((row) => ({
     ...row,
+    active_elapsed_days: hoursToElapsedDays(row.active_hours),
+    passive_elapsed_days: hoursToElapsedDays(row.passive_hours),
     passive_share_percent: row.passive_share === null ? null : row.passive_share * 100,
   }));
 
@@ -314,10 +322,11 @@ function TrendChart({ rows }: { rows: TrendSeriesRow[] }) {
             tickLine={chartTheme.tickLine}
           />
           <YAxis
-            yAxisId="hours"
+            yAxisId="elapsedDays"
             tick={chartTheme.axisTick}
             axisLine={chartTheme.axisLine}
             tickLine={chartTheme.tickLine}
+            tickFormatter={(value) => `${Number(value ?? 0).toFixed(0)} d`}
           />
           <YAxis
             yAxisId="share"
@@ -330,7 +339,7 @@ function TrendChart({ rows }: { rows: TrendSeriesRow[] }) {
           <Tooltip
             formatter={(value, name) => {
               if (name === "passive_share_percent") return [`${Number(value ?? 0).toFixed(1)}%`, "Passive share"];
-              return [`${Number(value ?? 0).toFixed(1)} h`, chartLabel(String(name))];
+              return [`${Number(value ?? 0).toFixed(1)} d`, chartLabel(String(name))];
             }}
             contentStyle={{
               background: chartTheme.colors.tooltipBg,
@@ -341,16 +350,16 @@ function TrendChart({ rows }: { rows: TrendSeriesRow[] }) {
           />
           <Legend formatter={(value) => chartLabel(String(value))} />
           <Bar
-            yAxisId="hours"
-            dataKey="active_hours"
-            stackId="hours"
+            yAxisId="elapsedDays"
+            dataKey="active_elapsed_days"
+            stackId="elapsedDays"
             fill={chartTheme.series[1]}
             radius={[0, 0, 0, 0]}
           />
           <Bar
-            yAxisId="hours"
-            dataKey="passive_hours"
-            stackId="hours"
+            yAxisId="elapsedDays"
+            dataKey="passive_elapsed_days"
+            stackId="elapsedDays"
             fill={chartTheme.series[2]}
             radius={[8, 8, 0, 0]}
           />
@@ -382,11 +391,11 @@ function TrendTable({ rows }: { rows: TrendRow[] }) {
             <th className="px-3 py-2 text-left font-medium">Quarter</th>
             <th className="px-3 py-2 text-left font-medium">Team</th>
             <th className="px-3 py-2 text-left font-medium">Workflow</th>
-            <th className="px-3 py-2 text-right font-medium">Active</th>
-            <th className="px-3 py-2 text-right font-medium">Passive</th>
+            <th className="px-3 py-2 text-right font-medium">Active elapsed</th>
+            <th className="px-3 py-2 text-right font-medium">Passive elapsed</th>
             <th className="px-3 py-2 text-right font-medium">Passive Share</th>
             <th className="px-3 py-2 text-right font-medium">Share Delta</th>
-            <th className="px-3 py-2 text-right font-medium">Total Delta</th>
+            <th className="px-3 py-2 text-right font-medium">Elapsed Delta</th>
           </tr>
         </thead>
         <tbody>
@@ -395,14 +404,14 @@ function TrendTable({ rows }: { rows: TrendRow[] }) {
               <td className="px-3 py-2 font-medium text-on-surface">{row.period}</td>
               <td className="px-3 py-2 text-on-surface">{row.team}</td>
               <td className="px-3 py-2 text-on-surface">{row.workflow}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-on-surface">{formatHours(row.active_hours)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-on-surface">{formatHours(row.passive_hours)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-on-surface">{formatElapsedDays(row.active_hours)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-on-surface">{formatElapsedDays(row.passive_hours)}</td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold text-on-surface">{formatPercent(row.passive_share)}</td>
               <td className={`px-3 py-2 text-right tabular-nums font-semibold ${deltaTone(row.passive_share_delta)}`}>
                 {formatDeltaPercent(row.passive_share_delta)}
               </td>
               <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(row.total_hours_delta)}`}>
-                {formatDeltaHours(row.total_hours_delta)}
+                {formatElapsedDaysDelta(row.total_hours_delta)}
               </td>
             </tr>
           ))}
@@ -464,8 +473,8 @@ function worstQueueBucket(row: TrendSeriesRow): { label: string; hours: number }
 }
 
 function chartLabel(key: string): string {
-  if (key === "active_hours") return "Active hours";
-  if (key === "passive_hours") return "Passive hours";
+  if (key === "active_elapsed_days") return "Active elapsed days";
+  if (key === "passive_elapsed_days") return "Passive elapsed days";
   if (key === "passive_share_percent") return "Passive share";
   return key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -494,10 +503,6 @@ function numberOrMinusOne(value: number | null): number {
   return value ?? -1;
 }
 
-function formatHours(value: number): string {
-  return `${value.toFixed(1)} h`;
-}
-
 function formatPercent(value: number | null): string {
   return value === null ? "Loading" : `${(value * 100).toFixed(1)}%`;
 }
@@ -506,12 +511,6 @@ function formatDeltaPercent(value: number | null): string {
   if (value === null) return "n/a";
   const sign = value > 0 ? "+" : "";
   return `${sign}${(value * 100).toFixed(1)} pp`;
-}
-
-function formatDeltaHours(value: number | null): string {
-  if (value === null) return "n/a";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)} h`;
 }
 
 function deltaTone(value: number | null): string {

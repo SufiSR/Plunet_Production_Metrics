@@ -21,6 +21,7 @@ import {
 } from "recharts";
 import { JiraAnalyticsShell } from "@/app/components/jira-analytics/JiraAnalyticsShell";
 import { ModernReportCard } from "@/app/components/jira-analytics/ModernReportCard";
+import { PeopleDataGate } from "@/app/components/jira-analytics/PeopleDataGate";
 import { ReportPageFrame } from "@/app/components/jira-analytics/ReportPageFrame";
 import { TeamMetricCard, TeamReportLayout } from "@/app/components/jira-analytics/TeamReportLayout";
 import { fetchAnalyticsReport, reportPaths } from "@/lib/jira-analytics-api";
@@ -100,6 +101,7 @@ export default function Page() {
   const teamGroups = useMemo(() => groupRowsByTeam(rows), [rows]);
   const chartData = useMemo(() => parseChartData(data?.series), [data?.series]);
   const summary = data?.summary ?? {};
+  const restricted = summary.people_data_restricted === true;
 
   const sortedRows = useMemo(() => {
     const defaultSorted = [...rows].sort(
@@ -124,7 +126,7 @@ export default function Page() {
     });
   }, []);
 
-  const empty = Boolean(!loading && !refreshing && !error && rows.length === 0);
+  const empty = Boolean(!loading && !refreshing && !error && rows.length === 0 && chartData.length === 0);
 
   return (
     <JiraAnalyticsShell title="Capacity utilization" description="" hidePageHeader hideMethodology>
@@ -135,7 +137,11 @@ export default function Page() {
         readingTip={copy.readingTip}
         metrics={
           <>
-            <TeamMetricCard label="People" value={rows.length ? String(rows.length) : "Loading"} detail="Person-month rows" />
+            <TeamMetricCard
+              label="People"
+              value={restricted ? "Restricted" : rows.length ? String(rows.length) : "Loading"}
+              detail="Person-month rows"
+            />
             <TeamMetricCard
               label="Teams"
               value={chartTeams.length ? String(chartTeams.length) : "Loading"}
@@ -263,8 +269,10 @@ export default function Page() {
 
         <section className="space-y-3">
           <h2 className="font-editorial text-lg font-semibold text-on-surface">Team drilldown</h2>
-          <div className="space-y-3">
-            {teamGroups.map((group) => {
+          {restricted ? <PeopleDataGate restricted /> : null}
+          {!restricted ? (
+            <div className="space-y-3">
+              {teamGroups.map((group) => {
               const expanded = expandedTeams.has(group.team);
               return (
                 <section key={group.team} className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest">
@@ -302,12 +310,15 @@ export default function Page() {
                   ) : null}
                 </section>
               );
-            })}
-          </div>
+              })}
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-3">
           <h2 className="font-editorial text-lg font-semibold text-on-surface">Monthly person rows</h2>
+          {restricted ? <PeopleDataGate restricted /> : null}
+          {!restricted ? (
           <div className="max-h-[32rem] overflow-auto rounded-xl border border-outline-variant/20">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-surface-container-low">
@@ -338,6 +349,7 @@ export default function Page() {
               </tbody>
             </table>
           </div>
+          ) : null}
         </section>
       </ReportPageFrame>
       </TeamReportLayout>

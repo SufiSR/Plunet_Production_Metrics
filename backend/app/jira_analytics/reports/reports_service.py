@@ -2175,6 +2175,7 @@ def active_vs_passive(
     for spec in MAIN_WORKFLOW_SPECS:
         workflow_row = workflow_by_spec.get(spec.catalog_key)
         data_points: list[dict] = []
+        timeline_points: list[dict] = []
         if workflow_row is not None:
             for iv in intervals:
                 if workflow_by_issue.get(iv.issue_id) != workflow_row.id:
@@ -2193,8 +2194,6 @@ def active_vs_passive(
                 ):
                     continue
                 seconds = iv.duration_seconds
-                if seconds <= 0:
-                    continue
                 attribution = attribution_by_issue.get(
                     iv.issue_id,
                     _IssueTeamAttribution(
@@ -2207,9 +2206,24 @@ def active_vs_passive(
                 if team and not _team_matches(attribution.team, team):
                     continue
                 cls = _active_passive_status_bucket(iv.status_name, spec)
+                hours = seconds / 3600.0
+                timeline_points.append(
+                    {
+                        "issue_id": iv.issue_id,
+                        "issue_key": iv.issue_key,
+                        "issue_type": (iv.issue_type_name or "").strip(),
+                        "team": attribution.team,
+                        "status": iv.status_name,
+                        "status_class": cls,
+                        "interval_start": iv.interval_start.isoformat(),
+                        "interval_end": iv.interval_end.isoformat() if iv.interval_end else None,
+                        "hours": hours,
+                    }
+                )
+                if seconds <= 0:
+                    continue
                 if cls is None:
                     continue
-                hours = seconds / 3600.0
                 by_workflow_team[(spec.label, attribution.team)][cls] += hours
                 data_points.append(
                     {
@@ -2237,6 +2251,7 @@ def active_vs_passive(
                 "issue_type_options": issue_type_options,
                 "projects": projects_for_workflow(db, workflow_row.id) if workflow_row else [],
                 "data_points": data_points,
+                "timeline_points": timeline_points,
             }
         )
 

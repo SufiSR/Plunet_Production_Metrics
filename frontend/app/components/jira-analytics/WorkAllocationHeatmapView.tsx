@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { PeopleDataGate } from "@/app/components/jira-analytics/PeopleDataGate";
 import type { AnalyticsReportResponse } from "@/types/jira-analytics";
 
 interface RoleHours {
@@ -30,6 +31,7 @@ interface WorkAllocationHeatmapViewProps {
 
 export function WorkAllocationHeatmapView({ data }: WorkAllocationHeatmapViewProps) {
   const groups = useMemo(() => parseHeatmapSeries(data.series), [data.series]);
+  const restricted = data.summary?.people_data_restricted === true;
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(() => new Set());
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
 
@@ -113,19 +115,25 @@ export function WorkAllocationHeatmapView({ data }: WorkAllocationHeatmapViewPro
                         <RoleHoursSummary hours={topic} className="text-xs" />
                       </button>
                       {topicExpanded ? (
-                        <ul className="mb-2 ml-7 space-y-1 border-l border-outline-variant/28 pl-3">
-                          {topic.people.map((person) => (
-                            <li
-                              key={`${key}-${person.person}`}
-                              className="flex flex-wrap items-baseline justify-between gap-3 py-1 text-sm"
-                            >
-                              <span className="text-on-surface">{person.person}</span>
-                              <span className="tabular-nums text-on-surface-variant">
-                                {formatPersonHours(person)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                        restricted ? (
+                          <div className="mb-2 ml-7">
+                            <PeopleDataGate restricted />
+                          </div>
+                        ) : (
+                          <ul className="mb-2 ml-7 space-y-1 border-l border-outline-variant/28 pl-3">
+                            {topic.people.map((person) => (
+                              <li
+                                key={`${key}-${person.person}`}
+                                className="flex flex-wrap items-baseline justify-between gap-3 py-1 text-sm"
+                              >
+                                <span className="text-on-surface">{person.person}</span>
+                                <span className="tabular-nums text-on-surface-variant">
+                                  {formatPersonHours(person)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
                       ) : null}
                     </div>
                   );

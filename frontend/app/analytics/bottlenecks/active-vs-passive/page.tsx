@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useAnalyticsReportLoad } from "@/hooks/useAnalyticsReportLoad";
 import {
   AnalyticsFilterPanel,
@@ -17,6 +17,11 @@ import { lastFourQuartersRange } from "@/lib/jira-analytics-dates";
 import { fetchAnalyticsReport, reportPaths } from "@/lib/jira-analytics-api";
 import { MAIN_DELIVERY_WORKFLOWS } from "@/lib/jira-analytics-workflows";
 import { sortMainDeliveryWorkflowSections } from "@/lib/sort-main-delivery-workflows";
+import {
+  ELAPSED_TIME_NOTE,
+  formatElapsedDays,
+  formatElapsedTimeWithHours,
+} from "@/lib/elapsed-time-format";
 import type { AnalyticsReportResponse, ReportQueryParams } from "@/types/jira-analytics";
 
 interface ActivePassiveFilters {
@@ -35,6 +40,18 @@ interface ActivePassivePoint {
   hours: number;
 }
 
+interface ActivePassiveTimelinePoint {
+  issue_id: number;
+  issue_key: string;
+  issue_type: string;
+  team: string;
+  status: string;
+  status_class: string | null;
+  interval_start: string;
+  interval_end: string | null;
+  hours: number;
+}
+
 interface ActivePassiveWorkflowSection {
   catalog_key: string;
   label: string;
@@ -42,6 +59,7 @@ interface ActivePassiveWorkflowSection {
   workflow_name?: string | null;
   issue_type_options: string[];
   data_points: ActivePassivePoint[];
+  timeline_points: ActivePassiveTimelinePoint[];
 }
 
 interface ActivePassiveIssueRow {
@@ -65,6 +83,13 @@ interface ActivePassiveTeamAccumulator {
   classes: Record<string, number>;
   issues: Map<number, ActivePassiveIssueRow>;
   details: Set<string>;
+}
+
+interface SelectedIssue {
+  issue_id: number;
+  issue_key: string;
+  issue_type: string;
+  team: string;
 }
 
 export default function Page() {
@@ -95,14 +120,14 @@ export default function Page() {
   return (
     <JiraAnalyticsShell
       title="Active vs passive time"
-      description="Active work vs Product, Dev, and QA queue time by attributed team."
+      description="Active work vs Product, Dev, and QA queue elapsed time by attributed team."
       hidePageHeader
       hideMethodology
     >
       <BottleneckReportLayout
         activeReport="active-vs-passive"
         title="See whether flow time is active delivery or waiting."
-        description="A workflow-efficiency view that separates hands-on execution from queues, reviews, QA, blocked states, and other passive time by attributed team."
+        description="A workflow-efficiency view that separates hands-on execution from queues, reviews, QA, blocked states, and other passive elapsed time by attributed team."
         mainWorkflowLineage={MAIN_DELIVERY_WORKFLOWS.map((workflow) => ({
           label: workflow.label,
           purpose: workflow.purpose,
@@ -112,7 +137,7 @@ export default function Page() {
         controls={
           <AnalyticsFilterPanel
             title="Cohort filter"
-            description="This report selects issues by created date, then summarizes their workflow time. It is not based on worklog date or status-change date."
+            description={`This report selects issues by created date, then summarizes their workflow elapsed time. ${ELAPSED_TIME_NOTE}`}
           >
             <FilterField label="Created from">
               <input
@@ -167,7 +192,7 @@ export default function Page() {
             </div>
           </AnalyticsFilterPanel>
         }
-        readingTip="Use passive share to find whether a workflow needs more execution focus or queue cleanup. Expand a team row when you need the underlying issue evidence."
+        readingTip="Use passive share to find whether a workflow needs more execution focus or queue cleanup. Expand a team row when you need the underlying issue timeline evidence."
       >
         <ReportPageFrame
           loading={loading}
@@ -199,7 +224,7 @@ function ActivePassiveMetrics({
   const totalHours = rows.reduce((sum, row) => sum + row.total_hours, 0);
   const passiveHours = rows.reduce((sum, row) => {
     return sum + Object.entries(row.classes).reduce((innerSum, [key, hours]) => {
-      return key === "active_work" || key === "done" ? innerSum : innerSum + hours;
+      return key === "Active Work" || key === "Done" ? innerSum : innerSum + hours;
     }, 0);
   }, 0);
   const teams = new Set(rows.map((row) => row.team)).size;
@@ -207,7 +232,7 @@ function ActivePassiveMetrics({
   return (
     <>
       <BottleneckMetricCard label="Teams" value={rows.length ? String(teams) : "Loading"} detail={selectedTeam || "All attributed teams"} />
-      <BottleneckMetricCard label="Workflow hours" value={formatCompactHours(totalHours)} detail="Visible cohort time" />
+      <BottleneckMetricCard label="Elapsed workflow time" value={formatCompactElapsedDays(totalHours)} detail="Visible cohort, calendar days" />
       <BottleneckMetricCard label="Passive share" value={formatPercentShare(passiveHours, totalHours)} detail="Non-active and non-done time" />
     </>
   );
@@ -246,18 +271,48 @@ function WorkflowBlock({
 }) {
   const options = workflow.issue_type_options;
   const [selectedTypes, setSelectedTypes] = useState<string[] | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<SelectedIssue | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
   const effectiveSelected = selectedTypes ?? options;
   const rows = useMemo(
     () => aggregateActivePassivePoints(workflow.data_points, effectiveSelected, selectedTeam),
     [workflow.data_points, effectiveSelected, selectedTeam],
   );
   const classKeys = useMemo(() => statusClassKeys(rows), [rows]);
+  const selectedTimeline = useMemo(() => {
+    if (!selectedIssue) return [];
+    return workflow.timeline_points
+      .filter((point) => {
+        if (point.issue_id !== selectedIssue.issue_id) return false;
+        if (point.team !== selectedIssue.team) return false;
+        if (!effectiveSelected.includes(point.issue_type)) return false;
+        if (selectedTeam && point.team !== selectedTeam) return false;
+        return true;
+      })
+      .sort((a, b) => a.interval_start.localeCompare(b.interval_start));
+  }, [effectiveSelected, selectedIssue, selectedTeam, workflow.timeline_points]);
+
+  useEffect(() => {
+    if (!selectedIssue) return;
+    const issueStillVisible = rows.some((row) =>
+      row.issues.some((issue) => issue.issue_id === selectedIssue.issue_id),
+    );
+    if (!issueStillVisible) setSelectedIssue(null);
+  }, [rows, selectedIssue]);
+
+  useEffect(() => {
+    if (!selectedIssue) return;
+    window.requestAnimationFrame(() => {
+      timelineRef.current?.focus();
+      timelineRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }, [selectedIssue]);
 
   return (
     <ModernReportCard
       eyebrow="Workflow"
       title={workflow.label}
-      description="Hours by attributed team. Issue-type pills filter instantly without reloading."
+      description={`${ELAPSED_TIME_NOTE} Issue-type pills filter instantly without reloading.`}
     >
       {options.length > 0 ? (
         <IssueTypePills options={options} selected={effectiveSelected} onChange={setSelectedTypes} />
@@ -267,8 +322,21 @@ function WorkflowBlock({
         </p>
       )}
       <div className="mt-4">
-        <ActivePassiveTable rows={rows} classKeys={classKeys} />
+        <ActivePassiveTable
+          rows={rows}
+          classKeys={classKeys}
+          selectedIssueId={selectedIssue?.issue_id ?? null}
+          onSelectIssue={(issue, team) => setSelectedIssue({ ...issue, team })}
+        />
       </div>
+      {selectedIssue ? (
+        <IssueTimelinePanel
+          ref={timelineRef}
+          issue={selectedIssue}
+          points={selectedTimeline}
+          onClose={() => setSelectedIssue(null)}
+        />
+      ) : null}
     </ModernReportCard>
   );
 }
@@ -336,9 +404,13 @@ function IssueTypePills({
 function ActivePassiveTable({
   rows,
   classKeys,
+  selectedIssueId,
+  onSelectIssue,
 }: {
   rows: ActivePassiveTeamRow[];
   classKeys: string[];
+  selectedIssueId: number | null;
+  onSelectIssue: (issue: ActivePassiveIssueRow, team: string) => void;
 }) {
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
@@ -394,11 +466,11 @@ function ActivePassiveTable({
                   </td>
                   {classKeys.map((key) => (
                     <td key={key} className="px-3 py-2 text-right tabular-nums text-on-surface">
-                      {formatHours(row.classes[key])}
+                      {formatElapsedDays(numberValue(row.classes[key]))}
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right tabular-nums font-medium text-on-surface">
-                    {formatHours(row.total_hours)}
+                    {formatElapsedDays(row.total_hours)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-on-surface">
                     {row.issue_count}
@@ -407,7 +479,13 @@ function ActivePassiveTable({
                 {expanded ? (
                   <tr className="border-b border-outline-variant/10 bg-surface-container-low/30">
                     <td colSpan={classKeys.length + 4} className="px-3 py-3">
-                      <IssueBreakdownTable issues={row.issues} classKeys={classKeys} />
+                      <IssueBreakdownTable
+                        issues={row.issues}
+                        classKeys={classKeys}
+                        team={row.team}
+                        selectedIssueId={selectedIssueId}
+                        onSelectIssue={onSelectIssue}
+                      />
                     </td>
                   </tr>
                 ) : null}
@@ -427,9 +505,15 @@ function ActivePassiveTable({
 function IssueBreakdownTable({
   issues,
   classKeys,
+  team,
+  selectedIssueId,
+  onSelectIssue,
 }: {
   issues: ActivePassiveIssueRow[];
   classKeys: string[];
+  team: string;
+  selectedIssueId: number | null;
+  onSelectIssue: (issue: ActivePassiveIssueRow, team: string) => void;
 }) {
   if (!issues.length) {
     return <p className="text-xs text-on-surface-variant">No issues for this team.</p>;
@@ -451,25 +535,151 @@ function IssueBreakdownTable({
           </tr>
         </thead>
         <tbody>
-          {issues.map((issue) => (
-            <tr key={issue.issue_id} className="border-b border-outline-variant/10 last:border-b-0">
-              <td className="px-3 py-2 font-medium text-on-surface">{issue.issue_key}</td>
-              <td className="px-3 py-2 text-on-surface-variant">{issue.issue_type}</td>
-              {classKeys.map((key) => (
-                <td key={key} className="px-3 py-2 text-right tabular-nums text-on-surface">
-                  {formatHours(issue.classes[key])}
+          {issues.map((issue) => {
+            const selected = selectedIssueId === issue.issue_id;
+            return (
+              <tr
+                key={issue.issue_id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectIssue(issue, team)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectIssue(issue, team);
+                  }
+                }}
+                className={`cursor-pointer border-b border-outline-variant/10 outline-none last:border-b-0 hover:bg-primary/5 focus:bg-primary/10 ${
+                  selected ? "bg-primary/10" : ""
+                }`}
+              >
+                <td className="px-3 py-2 font-medium">
+                  <a
+                    href={jiraIssueUrl(issue.issue_key)}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    {issue.issue_key}
+                  </a>
                 </td>
-              ))}
-              <td className="px-3 py-2 text-right tabular-nums font-medium text-on-surface">
-                {formatHours(issue.total_hours)}
-              </td>
-            </tr>
-          ))}
+                <td className="px-3 py-2 text-on-surface-variant">{issue.issue_type}</td>
+                {classKeys.map((key) => (
+                  <td key={key} className="px-3 py-2 text-right tabular-nums text-on-surface">
+                    {formatElapsedDays(numberValue(issue.classes[key]))}
+                  </td>
+                ))}
+                <td className="px-3 py-2 text-right tabular-nums font-medium text-on-surface">
+                  {formatElapsedDays(issue.total_hours)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
+
+const IssueTimelinePanel = forwardRef<
+  HTMLDivElement,
+  {
+    issue: SelectedIssue;
+    points: ActivePassiveTimelinePoint[];
+    onClose: () => void;
+  }
+>(function IssueTimelinePanel({ issue, points, onClose }, ref) {
+  const totalHours = points.reduce((sum, point) => sum + point.hours, 0);
+
+  return (
+    <section
+      ref={ref}
+      tabIndex={-1}
+      className="mt-5 rounded-2xl border border-primary/30 bg-primary/5 p-4 outline-none ring-primary/30 focus:ring-2"
+      aria-label={`Status timeline for ${issue.issue_key}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-label uppercase tracking-[0.18em] text-primary">Issue timeline</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <a
+              href={jiraIssueUrl(issue.issue_key)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-lg font-bold text-primary underline-offset-2 hover:underline"
+            >
+              {issue.issue_key}
+            </a>
+            <span className="text-sm text-on-surface-variant">{issue.issue_type}</span>
+            <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-on-surface-variant">
+              {issue.team}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            {ELAPSED_TIME_NOTE} Total visible timeline:{" "}
+            <span className="font-medium text-on-surface">{formatElapsedTimeWithHours(totalHours)}</span>.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full border border-outline-variant/40 px-3 py-1 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high"
+        >
+          Close
+        </button>
+      </div>
+
+      {points.length > 0 ? (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-outline-variant/20 bg-surface">
+          <table className="w-full min-w-[52rem] text-xs">
+            <thead>
+              <tr className="border-b border-outline-variant/10 bg-surface-container-low text-on-surface-variant">
+                <th className="px-3 py-2 text-left font-medium">From</th>
+                <th className="px-3 py-2 text-left font-medium">To</th>
+                <th className="px-3 py-2 text-left font-medium">Status</th>
+                <th className="px-3 py-2 text-left font-medium">Bucket</th>
+                <th className="px-3 py-2 text-right font-medium">Elapsed</th>
+                <th className="px-3 py-2 text-right font-medium">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.map((point, index) => (
+                <tr
+                  key={`${point.issue_id}-${point.interval_start}-${point.status}-${index}`}
+                  className="border-b border-outline-variant/10 last:border-b-0"
+                >
+                  <td className="px-3 py-2 tabular-nums text-on-surface">
+                    {formatDateTime(point.interval_start)}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums text-on-surface">
+                    {point.interval_end ? formatDateTime(point.interval_end) : "Open"}
+                  </td>
+                  <td className="px-3 py-2 font-medium text-on-surface">{point.status}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${bucketClassName(point.status_class)}`}>
+                      {point.status_class ?? "Excluded"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-on-surface">
+                    {formatElapsedDays(point.hours, 2)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-on-surface-variant">
+                    {formatHours(point.hours)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="mt-4 rounded-xl border border-dashed border-outline-variant/30 bg-surface p-4 text-sm text-on-surface-variant">
+          No timeline intervals are available for this issue in the current filters.
+        </p>
+      )}
+    </section>
+  );
+});
 
 function aggregateActivePassivePoints(
   points: ActivePassivePoint[],
@@ -555,6 +765,7 @@ function parseWorkflowSections(value: unknown): ActivePassiveWorkflowSection[] {
         workflow_name: typeof record.workflow_name === "string" ? record.workflow_name : label,
         issue_type_options: stringList(record.issue_type_options),
         data_points: parsePoints(record.data_points),
+        timeline_points: parseTimelinePoints(record.timeline_points),
       },
     ];
   });
@@ -590,6 +801,42 @@ function parsePoints(value: unknown): ActivePassivePoint[] {
   });
 }
 
+function parseTimelinePoints(value: unknown): ActivePassiveTimelinePoint[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    const issueId = typeof record.issue_id === "number" ? record.issue_id : null;
+    const issueKey = typeof record.issue_key === "string" ? record.issue_key : "";
+    const issueType = typeof record.issue_type === "string" ? record.issue_type : "";
+    const team = typeof record.team === "string" ? record.team : "Unknown";
+    const status = typeof record.status === "string" ? record.status : "";
+    const statusClass =
+      typeof record.status_class === "string" ? record.status_class : null;
+    const intervalStart =
+      typeof record.interval_start === "string" ? record.interval_start : "";
+    const intervalEnd =
+      typeof record.interval_end === "string" ? record.interval_end : null;
+    const hours = typeof record.hours === "number" ? record.hours : null;
+    if (issueId == null || !issueKey || !issueType || !status || !intervalStart || hours == null) {
+      return [];
+    }
+    return [
+      {
+        issue_id: issueId,
+        issue_key: issueKey,
+        issue_type: issueType,
+        team,
+        status,
+        status_class: statusClass,
+        interval_start: intervalStart,
+        interval_end: intervalEnd,
+        hours,
+      },
+    ];
+  });
+}
+
 function stringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && item.length > 0);
@@ -603,9 +850,21 @@ function formatHours(value: unknown): string {
   return typeof value === "number" ? value.toFixed(2) : "0.00";
 }
 
-function formatCompactHours(value: number): string {
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatCompactElapsedDays(value: number): string {
   if (!value) return "Loading";
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)} h`;
+  return formatElapsedDays(value, 0);
 }
 
 function formatPercentShare(numerator: number, denominator: number): string {
@@ -613,7 +872,30 @@ function formatPercentShare(numerator: number, denominator: number): string {
   return `${Math.round((numerator / denominator) * 100)}%`;
 }
 
+function numberValue(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function tooltipText(row: ActivePassiveTeamRow): string | undefined {
   if (row.attribution_details.length === 0) return undefined;
   return row.attribution_details.join("\n");
+}
+
+function jiraIssueUrl(issueKey: string): string {
+  return `https://plunet.atlassian.net/browse/${encodeURIComponent(issueKey)}`;
+}
+
+function bucketClassName(bucket: string | null): string {
+  switch (bucket) {
+    case "Active Work":
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    case "Dev Queue":
+      return "bg-sky-500/10 text-sky-700 dark:text-sky-300";
+    case "Product Queue":
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    case "QA Queue":
+      return "bg-violet-500/10 text-violet-700 dark:text-violet-300";
+    default:
+      return "bg-surface-container-high text-on-surface-variant";
+  }
 }

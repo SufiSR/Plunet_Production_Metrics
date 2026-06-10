@@ -154,6 +154,11 @@ export default function AdminNewOverviewPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/people-data-users" className="text-primary hover:underline">
+                People-data users
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/jira-analytics/feature-families" className="text-primary hover:underline">
                 Feature families
               </Link>

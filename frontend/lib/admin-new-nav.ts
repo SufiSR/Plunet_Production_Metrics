@@ -40,6 +40,7 @@ export const ADMIN_NEW_NAV_GROUPS: AdminNewNavGroup[] = [
     label: "Jira Analytics setup",
     items: [
       { href: "/admin/jira-analytics/assignments", icon: "badge", label: "User & team assignments" },
+      { href: "/admin/people-data-users", icon: "lock_person", label: "People-data users" },
       { href: "/admin/jira-analytics/feature-families", icon: "account_tree", label: "Feature families" },
     ],
   },

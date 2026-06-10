@@ -617,3 +617,8 @@ Never log to Jira until the entry is finalized (no OPEN or ? remaining).
 | DEVOPS-429 | implementation | 2026-05-29 09:50 | 2026-05-29 09:54 | 4m | Feature family UX and unassigned report refinement |
 | DEVOPS-429 | implementation | 2026-06-01 13:43 | 2026-06-01 13:46 | 3m | Remove obsolete normalized-cost report |
 | DEVOPS-429 | implementation | 2026-06-01 14:48 | 2026-06-01 14:53 | 5m | Updated analytics charts and tables to show newest dates first |
+| DEVOPS-429 | implementation | 2026-06-10 09:38 | 2026-06-10 09:55 | 17m | People-data access control implementation |
+| DEVOPS-429 | debugging | 2026-06-10 10:10 | 2026-06-10 10:13 | 3m | Fix people-data admin create and navigation |
+| DEVOPS-429 | debugging | 2026-06-10 10:18 | 2026-06-10 10:22 | 5m | Apply people-data migration and verify 500 |
+| DEVOPS-429 | implementation | 2026-06-10 10:49 | 2026-06-10 10:51 | 2m | Streamline login pages and labels |
+| DEVOPS-429 | jira-update | 2026-06-10 11:00 | 2026-06-10 11:03 | 4m | Commit and push full working tree |

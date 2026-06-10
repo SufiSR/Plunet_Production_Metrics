@@ -20,6 +20,10 @@ import type {
   LoginRequest,
   LoginResponse,
   MeResponse,
+  PeopleDataUserCreate,
+  PeopleDataUserItem,
+  PeopleDataUserListResponse,
+  PeopleDataUserPatch,
   WebhookTestRequest,
   WebhookTestResponse,
 } from "@/types/admin";
@@ -44,7 +48,7 @@ async function adminRequest<T>(
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      detail = body?.detail ?? detail;
+      detail = body?.message ?? body?.detail ?? detail;
     } catch {
       // ignore parse error
     }
@@ -66,6 +70,26 @@ export const adminApiClient = {
     adminRequest<void>("/auth/logout", { method: "POST" }),
 
   me: () => adminRequest<MeResponse>("/auth/me"),
+
+  getPeopleDataUsers: () =>
+    adminRequest<PeopleDataUserListResponse>("/admin/people-data-users"),
+
+  createPeopleDataUser: (body: PeopleDataUserCreate) =>
+    adminRequest<PeopleDataUserItem>("/admin/people-data-users", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  patchPeopleDataUser: (userId: number, body: PeopleDataUserPatch) =>
+    adminRequest<PeopleDataUserItem>(`/admin/people-data-users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  deletePeopleDataUser: (userId: number) =>
+    adminRequest<void>(`/admin/people-data-users/${userId}`, {
+      method: "DELETE",
+    }),
 
   getConfig: () => adminRequest<AdminConfigResponse>("/admin/config"),
 

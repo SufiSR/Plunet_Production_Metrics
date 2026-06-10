@@ -16,6 +16,7 @@ import { fetchAnalyticsReport, reportPaths } from "@/lib/jira-analytics-api";
 import { lastSixMonths } from "@/lib/jira-analytics-dates";
 import { TEAM_PAGE_COPY } from "@/lib/jira-analytics-team-pages";
 import { comparePeriodValuesDesc } from "@/lib/jira-analytics-sort";
+import { formatElapsedDays } from "@/lib/elapsed-time-format";
 import type { AnalyticsReportResponse, ReportQueryParams } from "@/types/jira-analytics";
 
 type ComponentKey =
@@ -90,10 +91,10 @@ const DEFAULT_WEIGHTS: Record<ComponentKey, number> = {
 
 const KPI_EXPLANATIONS: Record<ComponentKey, { source: string; formula: string; notes: string }> = {
   flow_efficiency: {
-    source: "Active vs passive workflow time",
+    source: "Active vs passive workflow elapsed time",
     formula: "active_work_hours / (active_work_hours + queue_hours) × 100",
     notes:
-      "Queue hours combine Product Queue, Dev Queue, and QA Queue from status dwell time for issues created in that calendar month.",
+      "Active and queue values are elapsed wall-clock status dwell time from Jira timestamps, including nights/weekends, not booked work hours.",
   },
   focus_health: {
     source: "Roadmap focus / planned-vs-unplanned allocated hours",
@@ -567,7 +568,8 @@ function RawMetricsTable({ rows, labels }: { rows: HealthRow[]; labels: Record<C
                 ...COMPONENT_KEYS.map((key) => labels[key]),
                 "Roadmap h",
                 "CI h",
-                "Queue h",
+                "Active elapsed d",
+                "Queue elapsed d",
                 "Done/week",
                 "Risk-adj h",
                 "Avg risk",
@@ -596,7 +598,8 @@ function RawMetricsTable({ rows, labels }: { rows: HealthRow[]; labels: Record<C
                 ))}
                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.roadmap_hours)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.continuous_improvement_hours)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.queue_hours)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatElapsedDaysOrNoData(row.active_work_hours)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatElapsedDaysOrNoData(row.queue_hours)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.avg_done_per_week)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.risk_adjusted_feature_hours)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(row.avg_feature_risk)}</td>
@@ -777,6 +780,10 @@ function formatNumber(value: number | null): string {
 
 function formatHours(value: number | null): string {
   return value === null ? "No data" : `${value.toFixed(1)}h`;
+}
+
+function formatElapsedDaysOrNoData(value: number | null): string {
+  return value === null ? "No data" : formatElapsedDays(value);
 }
 
 function formatPercent(value: number | null): string {

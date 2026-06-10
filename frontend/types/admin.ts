@@ -15,6 +15,29 @@ export interface MeResponse {
   username: string | null;
 }
 
+export interface PeopleDataUserItem {
+  id: number;
+  username: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PeopleDataUserListResponse {
+  items: PeopleDataUserItem[];
+}
+
+export interface PeopleDataUserCreate {
+  username: string;
+  password: string;
+}
+
+export interface PeopleDataUserPatch {
+  username?: string;
+  password?: string;
+  is_active?: boolean;
+}
+
 export type WorklogRole = "pm" | "dev" | "qa" | "sup";
 
 export interface JiraWorklogUserAssignment {

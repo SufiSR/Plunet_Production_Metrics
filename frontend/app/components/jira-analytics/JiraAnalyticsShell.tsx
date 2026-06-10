@@ -9,6 +9,7 @@ import { ReportMethodologyPanel } from "@/app/components/jira-analytics/ReportMe
 import { appendAnalyticsEmbedStyle } from "@/lib/analytics-embed-style";
 import { getMethodologyByPath } from "@/lib/jira-analytics-methodology";
 import { JIRA_ANALYTICS_SECTIONS } from "@/lib/jira-analytics-nav";
+import { usePeopleDataSession } from "@/lib/hooks/use-people-data-session";
 
 interface JiraAnalyticsShellProps {
   title: string;
@@ -29,6 +30,12 @@ export function JiraAnalyticsShell({
   const isEmbed = useAnalyticsEmbedStyle();
   const methodology = getMethodologyByPath(pathname);
   const navHref = (href: string) => (isEmbed ? appendAnalyticsEmbedStyle(href) : href);
+  const peopleData = usePeopleDataSession();
+
+  async function handlePeopleDataLogout() {
+    await peopleData.logout();
+    window.location.reload();
+  }
 
   return (
     <div
@@ -47,6 +54,32 @@ export function JiraAnalyticsShell({
               </Link>
             </div>
             <div className="flex items-center gap-3 shrink-0">
+              {peopleData.ready ? (
+                peopleData.authenticated ? (
+                  <>
+                    <Link
+                      href={navHref("/analytics/account")}
+                      className="text-xs font-medium text-on-surface-variant hover:text-primary"
+                    >
+                      {peopleData.username ?? "People data"}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handlePeopleDataLogout}
+                      className="rounded-full border border-outline-variant/30 px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href={navHref(`/analytics/login?next=${encodeURIComponent(pathname || "/analytics")}`)}
+                    className="rounded-full border border-outline-variant/30 px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary"
+                  >
+                    Sign in
+                  </Link>
+                )
+              ) : null}
               <ThemeToggle />
             </div>
           </div>

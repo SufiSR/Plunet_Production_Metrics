@@ -136,6 +136,7 @@ export interface DataQualityUserDrilldownResponse {
   active_count: number;
   ignored_count: number;
   users: DataQualityUserDrilldownRow[];
+  people_data_restricted?: boolean;
 }
 
 export interface DataQualityResponse {

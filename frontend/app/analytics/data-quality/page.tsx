@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { JiraAnalyticsShell } from "@/app/components/jira-analytics/JiraAnalyticsShell";
+import { PeopleDataGate } from "@/app/components/jira-analytics/PeopleDataGate";
 import { ReportPageFrame } from "@/app/components/jira-analytics/ReportPageFrame";
 import {
   fetchAllocationRebuildStatus,
@@ -386,6 +387,13 @@ function UserDrilldownPanel({
     return <p className="text-xs text-error">{error}</p>;
   }
   if (!drilldown) return null;
+  if (drilldown.people_data_restricted) {
+    return (
+      <section className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4">
+        <PeopleDataGate restricted />
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4 space-y-4">

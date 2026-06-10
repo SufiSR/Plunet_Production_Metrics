@@ -30,6 +30,8 @@ from app.jira_analytics.models import (
 )
 from app.jira_analytics.reports.reports_service import _investment_role_bucket, bound_quarter_period
 from app.models import Base
+from app.models.people_data_user import PeopleDataUser
+from app.services.people_data_password_service import hash_password
 
 
 def test_investment_role_bucket_groups_requested_overhead_roles() -> None:
@@ -77,6 +79,94 @@ def test_data_quality_endpoint(client: TestClient) -> None:
     assert "data_quality" in res.json()
 
 
+def _create_people_data_user(
+    username: str = "people.viewer",
+    password: str = "people-secret-123",
+) -> None:
+    with Session(database.get_engine()) as db:
+        db.add(
+            PeopleDataUser(
+                username=username,
+                username_normalized=username.casefold(),
+                password_hash=hash_password(password),
+                is_active=True,
+            )
+        )
+        db.commit()
+
+
+def _login_people_data(client: TestClient) -> None:
+    _create_people_data_user()
+    response = client.post(
+        "/api/auth/people-data/login",
+        json={"username": "people.viewer", "password": "people-secret-123"},
+    )
+    assert response.status_code == 200
+
+
+def test_people_data_auth_login_logout_and_password_change(client: TestClient) -> None:
+    _create_people_data_user()
+
+    login = client.post(
+        "/api/auth/people-data/login",
+        json={"username": "people.viewer", "password": "people-secret-123"},
+    )
+    assert login.status_code == 200
+    assert login.json()["authenticated"] is True
+
+    changed = client.post(
+        "/api/auth/people-data/change-password",
+        json={
+            "current_password": "people-secret-123",
+            "new_password": "people-secret-456",
+        },
+    )
+    assert changed.status_code == 200
+
+    logout = client.post("/api/auth/people-data/logout")
+    assert logout.status_code == 204
+
+    old_login = client.post(
+        "/api/auth/people-data/login",
+        json={"username": "people.viewer", "password": "people-secret-123"},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/auth/people-data/login",
+        json={"username": "people.viewer", "password": "people-secret-456"},
+    )
+    assert new_login.status_code == 200
+
+
+def test_admin_people_data_user_crud(client: TestClient) -> None:
+    unauthorized = client.get("/api/admin/people-data-users")
+    assert unauthorized.status_code == 401
+
+    client.post("/api/auth/login", json={"username": "admin", "password": "secret"})
+
+    created = client.post(
+        "/api/admin/people-data-users",
+        json={"username": "analytics.viewer", "password": "people-secret-123"},
+    )
+    assert created.status_code == 201
+    user_id = created.json()["id"]
+
+    listed = client.get("/api/admin/people-data-users")
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["username"] == "analytics.viewer"
+
+    patched = client.patch(
+        f"/api/admin/people-data-users/{user_id}",
+        json={"is_active": False, "password": "people-secret-456"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["is_active"] is False
+
+    deleted = client.delete(f"/api/admin/people-data-users/{user_id}")
+    assert deleted.status_code == 204
+
+
 def test_data_quality_user_drilldown_ignore_flow(client: TestClient) -> None:
     with Session(database.get_engine()) as db:
         project = JiraProject(jira_project_id="dq-bm", key="BM", name="Business Manager")
@@ -111,11 +201,15 @@ def test_data_quality_user_drilldown_ignore_flow(client: TestClient) -> None:
         )
         db.commit()
 
-    path = f"/api/jira-analytics/data-quality/checks/{WORKLOG_USERS_WITHOUT_ASSIGNMENT_CHECK_ID}/users"
+    path = (
+        f"/api/jira-analytics/data-quality/checks/"
+        f"{WORKLOG_USERS_WITHOUT_ASSIGNMENT_CHECK_ID}/users"
+    )
     initial = client.get(path)
     assert initial.status_code == 200
     assert initial.json()["active_count"] == 1
-    assert initial.json()["users"][0]["display_name"] == "DQ User"
+    assert initial.json()["people_data_restricted"] is True
+    assert initial.json()["users"][0]["display_name"] == "Restricted"
     assert initial.json()["users"][0]["total_hours"] == 2.0
 
     unauthenticated = client.post(f"{path}/{user_id}/ignore", json={"reason": "contractor"})
@@ -251,6 +345,7 @@ def test_capacity_forecast_groups_hrworks_capacity_by_assigned_team_and_role(
         )
         db.commit()
 
+    _login_people_data(client)
     res = client.get(
         "/api/jira-analytics/teams/capacity-forecast",
         params={"from": "2026-05-01", "to": "2026-06-01"},
@@ -319,6 +414,7 @@ def test_capacity_forecast_includes_freedevs_for_month_when_assignment_valid_on_
         )
         db.commit()
 
+    _login_people_data(client)
     res = client.get(
         "/api/jira-analytics/teams/capacity-forecast",
         params={"from": "2026-05-01", "to": "2026-05-01"},
@@ -617,7 +713,11 @@ def test_active_vs_passive_filters_main_workflows_and_attributes_team(client: Te
             "Dev Queue": 24.0,
         }
     ]
-    standard = body["filters"]["main_workflows"][0]
+    standard = next(
+        workflow
+        for workflow in body["filters"]["main_workflows"]
+        if workflow["label"] == "Standard Plunet Workflow"
+    )
     assert standard["label"] == "Standard Plunet Workflow"
     assert standard["issue_type_options"] == ["Analysis"]
     assert standard["data_points"][0]["confidence"] == "definite"
@@ -625,7 +725,14 @@ def test_active_vs_passive_filters_main_workflows_and_attributes_team(client: Te
         "Cosmic Coders",
         "Team Tantrum",
     }
-    assert body["filters"]["main_workflows"][1]["data_points"] == []
+    assert standard["timeline_points"][0]["status"] == "In Progress"
+    assert standard["timeline_points"][0]["interval_start"] == "2026-05-01T00:00:00+00:00"
+    empty_workflows = [
+        workflow
+        for workflow in body["filters"]["main_workflows"]
+        if workflow["label"] != "Standard Plunet Workflow"
+    ]
+    assert all(workflow["data_points"] == [] for workflow in empty_workflows)
 
     filtered = client.get(
         "/api/jira-analytics/workflow/active-vs-passive",

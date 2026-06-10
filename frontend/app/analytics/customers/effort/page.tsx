@@ -27,6 +27,7 @@ import { JiraAnalyticsShell } from "@/app/components/jira-analytics/JiraAnalytic
 import { JiraIssueLink, jiraBrowseUrl } from "@/app/components/jira-analytics/JiraIssueLink";
 import { useJiraBaseUrl } from "@/app/components/jira-analytics/JiraAnalyticsContext";
 import { EmptyCardMessage, ModernReportCard } from "@/app/components/jira-analytics/ModernReportCard";
+import { PeopleDataGate } from "@/app/components/jira-analytics/PeopleDataGate";
 import { ReportPageFrame } from "@/app/components/jira-analytics/ReportPageFrame";
 import { useAnalyticsReportLoad } from "@/hooks/useAnalyticsReportLoad";
 import { fetchAnalyticsReport, reportPaths } from "@/lib/jira-analytics-api";
@@ -85,6 +86,7 @@ export default function Page() {
     () => customerIssueDrilldowns(data?.filters?.issue_drilldowns),
     [data?.filters?.issue_drilldowns],
   );
+  const restricted = data?.summary?.people_data_restricted === true;
   const breakdownRows = useMemo(
     () => (mode === "monthly" ? data?.series ?? [] : yearlySeries),
     [data?.series, mode, yearlySeries],
@@ -223,11 +225,15 @@ export default function Page() {
                 title="Customer issue and contributor hours"
                 description="Issues that contributed to the selected customer total, split by the individuals whose allocated work went into them."
               >
-                <CustomerIssueDrilldown
-                  customer={activeDrilldownCustomer}
-                  rows={activeDrilldownCustomer ? issueDrilldowns[activeDrilldownCustomer] ?? [] : []}
-                  jiraBaseUrl={jiraBaseUrl}
-                />
+                {restricted ? (
+                  <PeopleDataGate restricted />
+                ) : (
+                  <CustomerIssueDrilldown
+                    customer={activeDrilldownCustomer}
+                    rows={activeDrilldownCustomer ? issueDrilldowns[activeDrilldownCustomer] ?? [] : []}
+                    jiraBaseUrl={jiraBaseUrl}
+                  />
+                )}
               </ModernReportCard>
             </div>
           ) : null}

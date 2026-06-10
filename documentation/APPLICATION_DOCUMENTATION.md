@@ -149,13 +149,18 @@ Session model:
 - Cookie-based admin session.
 - Login validates configured admin credentials.
 - Logout clears the session.
+- Cookie-based people-data session for individual-level analytics drilldowns.
+- Admins manage people-data viewer accounts from the admin UI; viewers can change their own people-data password after sign-in.
 
 RBAC boundary:
 
 - Public analytics routes and health/status endpoints are readable without admin auth.
+- Public analytics responses must redact person names and per-person hours unless the session has people-data access.
+- People-data access is granted by either an active admin session or an active people-data user session.
 - Admin routes require an active admin session.
 - Frontend middleware protects admin UX routes.
 - Backend dependencies are the authorization source of truth.
+- Feature Audit Report remains explicitly excluded from people-data redaction.
 
 ## 7) Scheduled Jobs and Sync Lifecycle
 

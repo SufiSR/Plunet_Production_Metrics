@@ -48,6 +48,9 @@ const DIRECT_TIME_NOTE =
 const NO_TIME_ALLOCATION_NOTE =
   "This report does not use time allocation; it is based on Jira issue dates, status history, release data, or quality checks as noted below.";
 
+const ELAPSED_STATUS_TIME_NOTE =
+  "Status interval durations are elapsed wall-clock time from Jira timestamps, shown as calendar days and including nights/weekends.";
+
 const TOPIC_TYPES =
   "Topics are classified as feature, tech_support, unassigned_bug, issue_without_feature, shared_overhead, or unclassified from issue type and feature membership. Indirect allocated rows keep the same feature or generic topic as their allocation target.";
 
@@ -301,6 +304,7 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
     included: [
       EXCLUDED_PROJECTS,
       NO_TIME_ALLOCATION_NOTE,
+      ELAPSED_STATUS_TIME_NOTE,
       "Main workflows: Plunet Cloud Workflow (Bug and Improvement families, including sub-tasks) and Standard Plunet Workflow (Analysis, Epic, TechSupport, Development Subtask).",
       "Other workflows: product_discovery, Design, Autotest, Regular Test, and Test Result workflows.",
       "Standard Plunet and Plunet Cloud workflows condense legacy status names into current labels and use fixed delivery order.",
@@ -310,30 +314,31 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
     presented: [
       "Global filters: date range and Jira projects (all selected by default) apply to every workflow.",
       "Optional checkbox loads other workflows (off by default to keep queries fast).",
-      "Global statistic toggle switches priority columns between median and average days.",
+      "Global statistic toggle switches priority columns between median and average elapsed days.",
       "Main workflows: dynamic issue-type pills under each headline; table columns Blocker → Critical → Major → Normal → Minor, then Average and Issue Count.",
       "Other workflows: project chips plus the same column layout.",
     ],
     limitations: [
       "Requires a Jira analytics sync to refresh workflow scheme mappings.",
       "Team-managed projects may have limited workflow scheme API coverage.",
-      "Date filter clips interval overlap; partial intervals count only the overlapping days.",
+      "Date filter clips interval overlap; partial intervals count only the overlapping elapsed calendar days.",
     ],
   },
 
   "active-vs-passive": {
     id: "active-vs-passive",
     title: "Active vs passive time",
-    overview: "Splits issue-created cohort workflow time into active work vs queue buckets for detailed team and issue drilldown.",
+    overview: "Splits issue-created cohort workflow elapsed time into active work vs queue buckets for detailed team and issue drilldown.",
     dataSources: ["Jira status intervals", "workflow sync mappings", "Jira worklogs and user assignments for team attribution"],
     included: [
       EXCLUDED_PROJECTS,
       NO_TIME_ALLOCATION_NOTE,
+      ELAPSED_STATUS_TIME_NOTE,
       "Issue cohort is selected by Jira issue created date.",
       "Each status interval is classified as Active Work, Product Queue, Dev Queue, or QA Queue using the curated workflow catalog.",
       "Team attribution uses PMGT team metadata where available, then contributor team evidence from Jira worklogs and assignments.",
     ],
-    presented: ["Workflow cards with team totals and expandable issue rows for the selected created-date cohort."],
+    presented: ["Workflow cards with team elapsed-day totals, expandable issue rows, and issue timeline drilldown for the selected created-date cohort."],
     limitations: [
       "This detail report is not a trend view because all rows are aggregated into the selected cohort window.",
       "Use Active vs passive trend to compare improvement or degradation by quarter.",
@@ -344,18 +349,19 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
     id: "active-vs-passive-trend",
     title: "Active vs passive trend",
     overview:
-      "Shows whether passive workflow time is improving or degrading by quarter using status interval overlap inside each quarter.",
+      "Shows whether passive workflow elapsed time is improving or degrading by quarter using status interval overlap inside each quarter.",
     dataSources: ["Jira status intervals", "workflow sync mappings", "Jira worklogs and user assignments for team attribution"],
     included: [
       EXCLUDED_PROJECTS,
       NO_TIME_ALLOCATION_NOTE,
+      ELAPSED_STATUS_TIME_NOTE,
       "Date basis is status interval overlap, not issue created date.",
-      "Each interval is clipped to the quarter where the waiting or active time occurred.",
+      "Each interval is clipped to the quarter where the waiting or active elapsed time occurred.",
       "Active Work is compared with Product Queue, Dev Queue, and QA Queue.",
       "Team attribution matches the Active vs passive detail report.",
     ],
     presented: [
-      "Quarterly passive share trend, active/passive hour stacks, latest-quarter KPI cards, and quarter/team/workflow table with deltas.",
+      "Quarterly passive share trend, active/passive elapsed-day stacks, latest-quarter KPI cards, and quarter/team/workflow table with deltas.",
     ],
     limitations: [
       "Open intervals continue until current time or issue resolution, so the current quarter can move as data refreshes.",
@@ -532,7 +538,7 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
     dataSources: [
       "Planned vs unplanned (allocated hours)",
       "Real interruption ratio",
-      "Active vs passive workflow time",
+      "Active vs passive workflow elapsed time",
       "Throughput stability",
       "Feature delivery risk",
     ],
@@ -542,7 +548,7 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
       "Default window is the last six months; API supports from, to, and team filters.",
       "Focused teams: Team Tantrum, Team World, Cosmic Coders; FreeDevs is included when assignment/component data exists.",
       "Weights: flow efficiency 25%, roadmap focus 20%, interruption health 20%, throughput predictability 20%, work-shape health 15%.",
-      "flow_efficiency = active_work_hours / (active_work_hours + queue_hours) × 100, using Active vs passive workflow buckets for issues created in that calendar month.",
+      "flow_efficiency = active_work_hours / (active_work_hours + queue_hours) × 100, using Active vs passive elapsed wall-clock status dwell time for issues created in that calendar month.",
       "focus_health = 50 + 50 × roadmap_focus, where roadmap_focus = roadmap_hours / (roadmap_hours + continuous_improvement_hours).",
       "interruption_health = (1 − time_interruption_ratio) × 100 from Real interruption ratio, with roadmap_focus × 100 as fallback when real-interruption evidence is unavailable.",
       "execution_predictability = throughput predictability × 100 per calendar month, where predictability = 1 − weekly throughput stddev / average weekly throughput.",
@@ -555,6 +561,7 @@ export const REPORT_METHODOLOGY: Record<string, ReportMethodology> = {
     ],
     limitations: [
       "Flow efficiency and throughput predictability are range-level signals repeated across months.",
+      "Flow-efficiency active/queue fields are elapsed calendar time from Jira status intervals, not booked work or HR Works capacity.",
       "Real interruption has richer evidence for Team Tantrum, Team World, and Cosmic Coders; other teams fall back to roadmap-focus interruption where needed.",
       ALLOCATION_REBUILD,
     ],

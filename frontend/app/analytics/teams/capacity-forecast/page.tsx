@@ -46,6 +46,8 @@ import {
 
 import { JiraAnalyticsShell } from "@/app/components/jira-analytics/JiraAnalyticsShell";
 
+import { PeopleDataGate } from "@/app/components/jira-analytics/PeopleDataGate";
+
 import { ReportPageFrame } from "@/app/components/jira-analytics/ReportPageFrame";
 
 import { TeamMetricCard, TeamReportLayout } from "@/app/components/jira-analytics/TeamReportLayout";
@@ -131,6 +133,7 @@ export default function Page() {
   const heatmapTeams = useMemo(() => orderedHeatmapTeams(rows, teams), [rows, teams]);
 
   const summary = data?.summary ?? {};
+  const restricted = summary.people_data_restricted === true;
 
   const series = useMemo(() => parseSeries(data?.series), [data?.series]);
 
@@ -162,7 +165,7 @@ export default function Page() {
 
             <TeamMetricCard label="Periods" value={periods.length ? String(periods.length) : "Loading"} detail="Recent + forecast months" />
 
-            <TeamMetricCard label="People" value={rows.length ? String(rows.length) : "Loading"} detail="Dev and QA rows" />
+            <TeamMetricCard label="People" value={restricted ? "Restricted" : rows.length ? String(rows.length) : "Loading"} detail="Dev and QA rows" />
 
             <TeamMetricCard
 
@@ -250,7 +253,7 @@ export default function Page() {
 
           <SummaryCard label="QA" value={formatHours(numberValue(summary.qa_hours))} />
 
-          <SummaryCard label="People" value={String(numberValue(summary.people))} />
+          <SummaryCard label="People" value={restricted ? "Restricted" : String(numberValue(summary.people))} />
 
         </div>
 
@@ -302,11 +305,15 @@ export default function Page() {
 
             </div>
 
-            <HeatmapLegend />
+            {!restricted ? <HeatmapLegend /> : null}
 
           </div>
 
-          <CapacityHeatmap rows={rows} periods={periods} teams={heatmapTeams} />
+          {restricted ? (
+            <PeopleDataGate restricted />
+          ) : (
+            <CapacityHeatmap rows={rows} periods={periods} teams={heatmapTeams} />
+          )}
 
         </section>
 
